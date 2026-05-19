@@ -6,7 +6,7 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
-const { fetchTimeSeries, fetchPrice, toTDSymbol, WS_URL } = require('./src/twelvedata');
+const { fetchTimeSeries, fetchPrice, toTDSymbol, getDemoPrice, WS_URL } = require('./src/twelvedata');
 
 const app = express();
 const server = http.createServer(app);
@@ -51,10 +51,63 @@ app.get('/api/price', async (req, res) => {
 // Track which symbols each browser client is subscribed to
 const clientSubscriptions = new Map(); // ws -> Set<symbol>
 
+// Demo tick simulator state (used when real WS unavailable)
+let demoMode = false;
+let demoTickInterval = null;
+const demoPrices = {}; // symbol -> current simulated price
+
+// Simulate realistic price movement for demo mode
+function initDemoPrice(symbol) {
+  const bases = { XAUUSD: 3241.50, BTCUSD: 67850.00 };
+  if (!demoPrices[symbol]) {
+    demoPrices[symbol] = bases[symbol] || 3241.50;
+  }
+}
+
+function tickDemoPrice(symbol) {
+  initDemoPrice(symbol);
+  const base = demoPrices[symbol];
+  const vol = symbol === 'BTCUSD' ? base * 0.0003 : base * 0.00008;
+  demoPrices[symbol] = parseFloat((base + (Math.random() - 0.5) * 2 * vol).toFixed(2));
+  return demoPrices[symbol];
+}
+
+function startDemoTicks() {
+  if (demoTickInterval) return;
+  console.log('[WS] Demo mode: simulating live price ticks');
+  demoMode = true;
+
+  demoTickInterval = setInterval(() => {
+    const activeSymbols = getSubscribedSymbols();
+    if (activeSymbols.size === 0) return;
+
+    for (const sym of activeSymbols) {
+      const price = tickDemoPrice(sym);
+      const tick = {
+        type:      'tick',
+        symbol:    sym,
+        price,
+        timestamp: Math.floor(Date.now() / 1000),
+      };
+      broadcast(tick);
+    }
+  }, 1000); // tick every second, like TwelveData WS
+}
+
+function stopDemoTicks() {
+  if (demoTickInterval) {
+    clearInterval(demoTickInterval);
+    demoTickInterval = null;
+  }
+  demoMode = false;
+}
+
 // Single upstream TwelveData WebSocket connection
 let tdWs = null;
 let tdConnecting = false;
 let tdConnected = false;
+let tdFailCount = 0;
+const MAX_TD_FAILS = 2; // after this many failures, switch to demo mode
 const pendingSubscriptions = new Set(); // symbols to subscribe when connected
 
 function getSubscribedSymbols() {
@@ -67,6 +120,8 @@ function getSubscribedSymbols() {
 
 function connectTwelveDataWS() {
   if (tdConnecting || tdConnected) return;
+  if (demoMode) return; // already in demo mode, don't keep trying
+
   tdConnecting = true;
 
   console.log('[WS] Connecting to TwelveData WebSocket...');
@@ -75,7 +130,9 @@ function connectTwelveDataWS() {
   tdWs.on('open', () => {
     tdConnecting = false;
     tdConnected = true;
+    tdFailCount = 0;
     console.log('[WS] Connected to TwelveData');
+    stopDemoTicks();
 
     // Subscribe to all pending symbols
     const syms = [...getSubscribedSymbols(), ...pendingSubscriptions];
@@ -92,9 +149,9 @@ function connectTwelveDataWS() {
       // TwelveData sends heartbeat, subscribe confirm, and price events
       if (msg.event === 'price') {
         const tick = {
-          type: 'tick',
-          symbol: msg.symbol, // e.g. "XAU/USD"
-          price: parseFloat(msg.price),
+          type:      'tick',
+          symbol:    msg.symbol, // e.g. "XAU/USD" -> normalized in client
+          price:     parseFloat(msg.price),
           timestamp: msg.timestamp,
         };
         broadcast(tick);
@@ -104,18 +161,35 @@ function connectTwelveDataWS() {
     }
   });
 
-  tdWs.on('close', () => {
+  tdWs.on('close', (code, reason) => {
     tdConnecting = false;
     tdConnected = false;
-    console.log('[WS] TwelveData connection closed, reconnecting in 5s...');
+    tdFailCount++;
+
+    if (code === 403 || (reason && reason.toString().includes('403')) || tdFailCount >= MAX_TD_FAILS) {
+      console.warn(`[WS] TwelveData WS access denied (code=${code}), switching to demo mode`);
+      startDemoTicks();
+      return; // don't reconnect
+    }
+
+    console.log(`[WS] TwelveData connection closed (${code}), reconnecting in 5s...`);
     setTimeout(connectTwelveDataWS, 5000);
   });
 
   tdWs.on('error', (err) => {
     tdConnecting = false;
     tdConnected = false;
+    tdFailCount++;
     console.error('[WS] TwelveData error:', err.message);
-    tdWs.terminate();
+
+    try { tdWs.terminate(); } catch(e) {}
+
+    if (tdFailCount >= MAX_TD_FAILS) {
+      console.warn('[WS] TwelveData repeatedly failing, switching to demo mode');
+      startDemoTicks();
+      return;
+    }
+
     setTimeout(connectTwelveDataWS, 5000);
   });
 }
@@ -123,7 +197,7 @@ function connectTwelveDataWS() {
 function subscribeTD(symbols) {
   if (!tdConnected || !tdWs) {
     symbols.forEach(s => pendingSubscriptions.add(s));
-    connectTwelveDataWS();
+    if (!demoMode) connectTwelveDataWS();
     return;
   }
   const tdSymbols = symbols.map(s => toTDSymbol(s));
@@ -173,8 +247,11 @@ wss.on('connection', (ws, req) => {
         const clientSyms = clientSubscriptions.get(ws);
         syms.forEach(s => clientSyms.add(s.toUpperCase()));
 
-        // Connect and subscribe upstream if needed
-        if (!tdConnected) {
+        if (demoMode) {
+          // In demo mode, just make sure demo ticks are running
+          syms.forEach(s => initDemoPrice(s.toUpperCase()));
+          if (!demoTickInterval) startDemoTicks();
+        } else if (!tdConnected) {
           syms.forEach(s => pendingSubscriptions.add(s.toUpperCase()));
           connectTwelveDataWS();
         } else {
@@ -186,7 +263,7 @@ wss.on('connection', (ws, req) => {
         const syms = Array.isArray(msg.symbol) ? msg.symbol : [msg.symbol];
         const clientSyms = clientSubscriptions.get(ws);
         syms.forEach(s => clientSyms.delete(s.toUpperCase()));
-        unsubscribeTD(syms.map(s => s.toUpperCase()));
+        if (!demoMode) unsubscribeTD(syms.map(s => s.toUpperCase()));
       }
     } catch (e) {
       // ignore
@@ -196,7 +273,7 @@ wss.on('connection', (ws, req) => {
   ws.on('close', () => {
     const syms = [...(clientSubscriptions.get(ws) || [])];
     clientSubscriptions.delete(ws);
-    if (syms.length > 0) {
+    if (syms.length > 0 && !demoMode) {
       unsubscribeTD(syms);
     }
     console.log('[WS] Browser client disconnected');
@@ -206,7 +283,7 @@ wss.on('connection', (ws, req) => {
 // ─── Start server ─────────────────────────────────────────────────────────────
 server.listen(PORT, () => {
   console.log(`\n  ICT Sniper running at http://localhost:${PORT}\n`);
-  // Pre-connect to TwelveData WS for XAUUSD
+  // Pre-connect to TwelveData WS for XAUUSD; will fall back to demo mode if needed
   pendingSubscriptions.add('XAUUSD');
   connectTwelveDataWS();
 });
