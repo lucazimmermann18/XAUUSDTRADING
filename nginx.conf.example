@@ -1,0 +1,57 @@
+# ── Nginx Reverse-Proxy für ICT Sniper ────────────────────────────────────────
+# Datei nach /etc/nginx/sites-available/ict-sniper kopieren,
+# dann: ln -s /etc/nginx/sites-available/ict-sniper /etc/nginx/sites-enabled/
+# SSL via: certbot --nginx -d yourdomain.com
+
+server {
+    listen 80;
+    server_name yourdomain.com;
+
+    # HTTP → HTTPS redirect (von Certbot automatisch ergänzt)
+    return 301 https://$host$request_uri;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name yourdomain.com;
+
+    # SSL (von Certbot befüllt)
+    # ssl_certificate     /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    # ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+
+    # Gzip
+    gzip on;
+    gzip_types text/plain text/css application/javascript application/json;
+
+    # Hauptanwendung
+    location / {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header   X-Forwarded-Proto $scheme;
+    }
+
+    # WebSocket-Upgrade (wichtig für Live-Preise)
+    location /ws {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Upgrade    $http_upgrade;
+        proxy_set_header   Connection "upgrade";
+        proxy_set_header   Host       $host;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+    }
+
+    # SSE-Streaming (AI-Kommentar)
+    location /api/ai-analyze {
+        proxy_pass         http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header   Host              $host;
+        proxy_set_header   X-Real-IP         $remote_addr;
+        proxy_buffering    off;
+        proxy_cache        off;
+        proxy_read_timeout 120s;
+    }
+}

@@ -25,6 +25,7 @@ app.get('/journal', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'journal.html'));
 });
 
+
 // ─── REST: Candles ───────────────────────────────────────────────────────────
 app.get('/api/candles', async (req, res) => {
   try {
@@ -322,6 +323,11 @@ wss.on('connection', (ws, req) => {
   });
 });
 
+// ─── Health check ─────────────────────────────────────────────────────────────
+app.get('/health', (_req, res) => {
+  res.json({ status: 'ok', uptime: Math.floor(process.uptime()), mode: demoMode ? 'demo' : 'live' });
+});
+
 // ─── Start server ─────────────────────────────────────────────────────────────
 server.listen(PORT, () => {
   console.log(`\n  ICT Sniper running at http://localhost:${PORT}\n`);
@@ -329,3 +335,15 @@ server.listen(PORT, () => {
   pendingSubscriptions.add('XAUUSD');
   connectTwelveDataWS();
 });
+
+// ─── Graceful shutdown (PM2 / SIGTERM) ───────────────────────────────────────
+function shutdown() {
+  console.log('\n[Server] Shutting down gracefully...');
+  if (demoTickInterval) clearInterval(demoTickInterval);
+  if (tdWs) try { tdWs.terminate(); } catch (_) {}
+  server.close(() => process.exit(0));
+  setTimeout(() => process.exit(1), 5000); // hard kill after 5s
+}
+
+process.on('SIGTERM', shutdown);
+process.on('SIGINT',  shutdown);
