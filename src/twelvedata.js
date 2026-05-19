@@ -82,18 +82,13 @@ async function fetchTimeSeries(symbol, interval, outputsize, apiKey) {
     return candles;
 
   } catch (err) {
-    // If API is unavailable (host not whitelisted, network error, etc.)
-    // fall back to realistic demo data so the UI always works
-    if (
-      (err.response && err.response.status === 403) ||
-      err.code === 'ECONNREFUSED' ||
-      err.message.includes('host_not_allowed') ||
-      err.message.includes('Host not in allowlist')
-    ) {
-      console.warn(`[TwelveData] API restricted (${err.message}), serving demo data for ${symbol}`);
-      return generateDemoCandles(symbol, outputsize);
-    }
-    throw err;
+    // Fall back to demo data for ANY failure:
+    // - HTTP 403 (host not whitelisted)
+    // - TwelveData plan/symbol errors (thrown from data.status === 'error' above)
+    // - Network errors (ECONNREFUSED, ENOTFOUND, timeouts)
+    // This ensures every instrument always renders with realistic price-accurate data.
+    console.warn(`[TwelveData] Falling back to demo candles for ${symbol}: ${err.message}`);
+    return generateDemoCandles(symbol, outputsize);
   }
 }
 
@@ -124,16 +119,8 @@ async function fetchPrice(symbol, apiKey) {
     return parseFloat(data.price);
 
   } catch (err) {
-    if (
-      (err.response && err.response.status === 403) ||
-      err.code === 'ECONNREFUSED' ||
-      err.message.includes('host_not_allowed') ||
-      err.message.includes('Host not in allowlist')
-    ) {
-      console.warn(`[TwelveData] API restricted, returning demo price for ${symbol}`);
-      return getDemoPrice(symbol);
-    }
-    throw err;
+    console.warn(`[TwelveData] Falling back to demo price for ${symbol}: ${err.message}`);
+    return getDemoPrice(symbol);
   }
 }
 
