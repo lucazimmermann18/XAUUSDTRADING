@@ -256,11 +256,32 @@ const INSTRUMENTS_META = {
   SOLUSD: { tag: 'SOL · M1',   contractSize: 1,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',   accent: '#34D399' },
 };
 
-function buildClaudeVisionPrompt(symbol, capital, currentPrice) {
-  const meta = INSTRUMENTS_META[symbol] || INSTRUMENTS_META['XAUUSD'];
+function buildCandleTable(candles) {
+  return candles
+    .map(c => {
+      const dt = new Date(c.time * 1000);
+      const ts = `${dt.getUTCHours().toString().padStart(2,'0')}:${dt.getUTCMinutes().toString().padStart(2,'0')}`;
+      return `${ts}  O:${c.open}  H:${c.high}  L:${c.low}  C:${c.close}`;
+    })
+    .join('\n');
+}
+
+function buildClaudeVisionPrompt(symbol, capital, currentPrice, candles) {
+  const meta      = INSTRUMENTS_META[symbol] || INSTRUMENTS_META['XAUUSD'];
+  const last200   = candles ? candles.slice(-200) : [];
+  const candlesTxt = last200.length > 0
+    ? `\n═══ MARKTDATEN — letzte ${last200.length} M1-Kerzen (für präzise Berechnung) ═══\n` +
+      `Zeit   Open        High        Low         Close\n` +
+      buildCandleTable(last200)
+    : '';
 
   return `Du bist ein ICT-Trading-Assistent für ${symbol} auf dem M1-Chart.
 Ausgabe: komplett auf Deutsch. RR zwischen 1:1,8 und 1:4.
+
+Du erhältst ZWEI Informationsquellen:
+1. Den Chart-Screenshot → für visuelle Mustererkennung (Struktur, FVGs, Liquidität)
+2. Die exakten OHLCV-Kerzendaten → für präzise numerische Berechnungen (SL, TP, Lot)
+Nutze beide kombiniert. Der Screenshot zeigt was, die Zahlen bestätigen und präzisieren.
 
 ═══ INSTRUMENT-PARAMETER ═══
 Symbol:          ${symbol}
@@ -269,32 +290,32 @@ Kontraktgröße:   ${meta.contractSize}
 Lot-Formel:      ${meta.lotFormula}
 Handelskapital:  ${capital} $
 Aktueller Preis: ${currentPrice}
+${candlesTxt}
+═══ ANALYSE (4 ICT-Säulen) ═══
+① Struktur — Identifiziere HH/HL (bullisch) oder LH/LL (bärisch) anhand der Swing-Punkte in den Kerzendaten
+② Liquidität — Finde BSL (Swing-Highs) und SSL (Swing-Lows); prüfe ob gesweept (Kerze hat darüber/darunter geclosed)
+③ FVG — Suche 3-Kerzen-Muster: Bullisch wenn C[i-2].high < C[i].low; Bärisch wenn C[i-2].low > C[i].high; nur nicht-mitigierte zählen
+④ Premium / Discount — EQ = (letzter Swing-High + letzter Swing-Low) / 2; aktueller Preis darüber = Premium, darunter = Discount
 
-═══ ANALYSE (4 ICT-Säulen — aus dem Chart-Screenshot) ═══
-① Struktur (HH / HL / LH / LL, M1-Trend)
-② Liquidität (BSL / SSL — gesweept ✓ oder noch offen)
-③ Nicht mitigierter FVG (bullisch / bärisch)
-④ Premium / Discount (Range, EQ 50%)
-
-═══ BERECHNUNG ═══
-- Risiko: 10 %, RR: zwischen 1:1,8 und 1:4
-- Entry = aktueller Preis (${currentPrice})
-- SL = hinter strukturellem Punkt + kleiner Puffer
-- TP = erste Liquidität die RR 1:1,8–1:4 ergibt
-- Lot = ${meta.lotFormula}, gerundet auf 0,01
-- tpPnl = Lot × |TP − Entry| × ${meta.contractSize}
-- slPnl = Lot × |Entry − SL| × ${meta.contractSize}
-- riskPct   = (slPnl / Kapital) × 100
-- rewardPct = (tpPnl / Kapital) × 100
+═══ BERECHNUNG (mit den exakten Kerzenwerten rechnen) ═══
+- Entry   = ${currentPrice} (aktueller Preis)
+- SL      = hinter dem letzten relevanten Swing-Punkt + Puffer (exakten Low/High aus den Daten nehmen)
+- TP      = nächste Liquidität auf der Zielseite die RR 1:1,8–1:4 ergibt
+- Lot     = ${meta.lotFormula}, gerundet auf 0,01
+- tpPnl   = Lot × |TP − Entry| × ${meta.contractSize}
+- slPnl   = Lot × |Entry − SL| × ${meta.contractSize}
+- riskPct   = (slPnl / ${capital}) × 100
+- rewardPct = (tpPnl / ${capital}) × 100
+- RR      = |TP − Entry| / |Entry − SL|
 
 ═══ AUSGABE ═══
 Antworte AUSSCHLIESSLICH mit diesem JSON — kein Text davor oder danach, kein Markdown:
 
 {
   "structure": { "label": "Bullisch · HH+HL bestätigt", "trend": "bullish" },
-  "liquidity": { "label": "BSL bei X gesweept ✓\\nSSL bei Y noch offen" },
-  "fvg":       { "label": "↑ Bullisch FVG · X–Y\\nNicht mitigiert", "type": "bullish" },
-  "premDisc":  { "label": "Discount · EQ bei X", "zone": "discount" },
+  "liquidity": { "label": "BSL bei X.XX gesweept ✓\\nSSL bei Y.YY noch offen" },
+  "fvg":       { "label": "↑ Bullisch FVG · X.XX–Y.YY\\nNicht mitigiert", "type": "bullish" },
+  "premDisc":  { "label": "Discount · EQ bei X.XX", "zone": "discount" },
   "trade": {
     "direction":  "long",
     "entry":      0.00,
@@ -314,12 +335,12 @@ Regeln:
 - trend: "bullish" / "bearish" / "neutral"
 - type (FVG): "bullish" / "bearish" / "none"
 - zone: "premium" / "discount"
-- Alle Preise mit 2 Dezimalstellen (Forex: 5 Dezimalstellen)
-- Nur echte Werte aus dem Chart — keine Schätzungen erfinden`;
+- Alle Preisangaben aus den echten Kerzendaten — keine Schätzungen
+- SL und TP müssen reale Levels aus den Swing-Daten sein`;
 }
 
-async function callClaudeVision({ image, symbol, capital, currentPrice, apiKey }) {
-  const prompt = buildClaudeVisionPrompt(symbol, capital, currentPrice);
+async function callClaudeVision({ image, symbol, capital, currentPrice, candles, apiKey }) {
+  const prompt = buildClaudeVisionPrompt(symbol, capital, currentPrice, candles);
 
   const response = await axios.post(
     'https://api.anthropic.com/v1/messages',

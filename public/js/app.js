@@ -225,6 +225,7 @@
             symbol:       currentSymbol,
             capital,
             currentPrice: lastPrice || candles[candles.length - 1]?.close,
+            candles:      candles.slice(-200),
           }),
         });
         const json = await apiRes.json();

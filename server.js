@@ -56,7 +56,7 @@ app.get('/api/price', async (req, res) => {
 
 // ─── REST: Claude Vision — primary ICT analysis from chart screenshot ────────
 app.post('/api/claude-analyze', async (req, res) => {
-  const { image, symbol, capital, currentPrice } = req.body;
+  const { image, symbol, capital, currentPrice, candles } = req.body;
 
   if (!image || !symbol || !capital) {
     return res.status(400).json({ error: 'Fehlende Parameter: image, symbol, capital' });
@@ -68,7 +68,7 @@ app.post('/api/claude-analyze', async (req, res) => {
   }
 
   try {
-    const result = await callClaudeVision({ image, symbol, capital, currentPrice, apiKey });
+    const result = await callClaudeVision({ image, symbol, capital, currentPrice, candles, apiKey });
     res.json({ success: true, result });
   } catch (err) {
     console.error('[/api/claude-analyze]', err.message);
