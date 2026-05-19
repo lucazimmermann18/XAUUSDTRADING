@@ -209,19 +209,56 @@
     analyseBtn.disabled = true;
     analyseBtn.innerHTML = '<span class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block"></span> Analysiere…';
 
-    setStatus('loading', 'ICT-Analyse läuft…');
-    await new Promise(r => setTimeout(r, 300));
+    setStatus('loading', 'Claude analysiert Chart-Screenshot…');
+    await new Promise(r => setTimeout(r, 100));
 
     try {
-      const result  = ICTAnalyzer.analyze(candles, currentSymbol, capital);
+      // ── Step 1: Claude Vision analyses the chart screenshot ──────────────
+      let result;
+      try {
+        const screenshot = ChartManager.takeScreenshot();
+        const apiRes = await fetch('/api/claude-analyze', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            image:        screenshot,
+            symbol:       currentSymbol,
+            capital,
+            currentPrice: lastPrice || candles[candles.length - 1]?.close,
+          }),
+        });
+        const json = await apiRes.json();
+        if (!json.success) throw new Error(json.error || 'Claude Vision Fehler');
+
+        // Merge Claude's analysis with full context (candles, symbol, capital)
+        result = {
+          symbol:   currentSymbol,
+          capital,
+          candles,
+          structure: json.result.structure,
+          liquidity: json.result.liquidity,
+          fvg:       json.result.fvg,
+          premDisc:  json.result.premDisc,
+          trade:     json.result.trade,
+          timestamp: Date.now(),
+          source:    'claude-vision',
+        };
+      } catch (visionErr) {
+        console.warn('[App] Claude Vision failed, falling back to ICTAnalyzer:', visionErr.message);
+        setStatus('loading', 'Fallback: Regelbasierte ICT-Analyse…');
+        result = ICTAnalyzer.analyze(candles, currentSymbol, capital);
+        result.source = 'fallback';
+      }
+
       ChartManager.drawLevelLines(result.trade);
       const cardHTML = TradeCard.render(result);
       cardOutput.innerHTML = cardHTML;
 
       cardOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
-      const dir = result.trade.direction === 'long' ? '↑ Long' : '↓ Short';
-      setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · KI-Validation läuft…`);
+      const dir    = result.trade.direction === 'long' ? '↑ Long' : '↓ Short';
+      const engine = result.source === 'claude-vision' ? '🤖 Claude Vision' : '⚙ Regelbasiert';
+      setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · ${engine} · KI-Validation läuft…`);
 
       // Dual-KI quality gate — journal + monitoring happen inside callbacks
       DualValidatorUI.start(aiPanelContainer, {
@@ -230,10 +267,10 @@
         onPassed: ({ tradeId }) => {
           showJournalToast(tradeId);
           TradeMonitor.onNewTrade(result.symbol);
-          setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · ✅ Trade validiert`);
+          setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · ${engine} · ✅ Dual-KI bestätigt`);
         },
         onRejected: () => {
-          setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · ❌ Trade abgelehnt`);
+          setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · ${engine} · ❌ Dual-KI abgelehnt`);
         },
       });
 

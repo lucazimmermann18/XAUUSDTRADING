@@ -223,6 +223,13 @@ const ChartManager = (() => {
   function getCandles()      { return currentCandles; }
   function getCurrentSymbol(){ return currentSymbol;  }
 
+  /** Returns base64 PNG of the current chart (no data: prefix). */
+  function takeScreenshot() {
+    if (!chart) throw new Error('Chart not initialized');
+    const canvas = chart.takeScreenshot();
+    return canvas.toDataURL('image/png').replace(/^data:image\/png;base64,/, '');
+  }
+
   return {
     init,
     loadCandles,
@@ -231,5 +238,6 @@ const ChartManager = (() => {
     clearLevelLines,
     getCandles,
     getCurrentSymbol,
+    takeScreenshot,
   };
 })();

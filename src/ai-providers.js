@@ -234,7 +234,135 @@ async function streamAI({ provider, symbol, candles, analysis, trade, capital, a
   res.end();
 }
 
-module.exports = { streamAI, streamAnthropicRaw, sseToken, sseDone, sseError };
+// ── Claude Vision — primary ICT analysis from chart screenshot ────────────────
+
+const INSTRUMENTS_META = {
+  XAUUSD: { tag: 'GOLD · M1',  contractSize: 100, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100)', accent: '#D4AF37' },
+  BTCUSD: { tag: 'BTC · M1',   contractSize: 1,   lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',   accent: '#F7931A' },
+  EURUSD: { tag: 'EURUSD · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#3B82F6' },
+  GBPUSD: { tag: 'GBPUSD · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#8B5CF6' },
+  USDJPY: { tag: 'USDJPY · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#EC4899' },
+  GBPJPY: { tag: 'GBPJPY · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#F59E0B' },
+  AUDUSD: { tag: 'AUDUSD · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#10B981' },
+  USDCHF: { tag: 'USDCHF · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#EF4444' },
+  US500:  { tag: 'US500 · M1', contractSize: 50,   lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 50)',   accent: '#6366F1' },
+  NAS100: { tag: 'NAS100 · M1',contractSize: 20,   lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 20)',  accent: '#06B6D4' },
+  US30:   { tag: 'US30 · M1',  contractSize: 5,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 5)',   accent: '#84CC16' },
+  GER40:  { tag: 'GER40 · M1', contractSize: 25,   lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 25)',  accent: '#F97316' },
+  XAGUSD: { tag: 'SILBER · M1',contractSize: 5000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 5000)',accent: '#94A3B8' },
+  USOIL:  { tag: 'OIL · M1',   contractSize: 1000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1000)', accent: '#78716C' },
+  XCUUSD: { tag: 'KUPFER · M1',contractSize: 25000,lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 25000)',accent: '#B45309' },
+  ETHUSD: { tag: 'ETH · M1',   contractSize: 1,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',   accent: '#818CF8' },
+  SOLUSD: { tag: 'SOL · M1',   contractSize: 1,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',   accent: '#34D399' },
+};
+
+function buildClaudeVisionPrompt(symbol, capital, currentPrice) {
+  const meta = INSTRUMENTS_META[symbol] || INSTRUMENTS_META['XAUUSD'];
+
+  return `Du bist ein ICT-Trading-Assistent für ${symbol} auf dem M1-Chart.
+Ausgabe: komplett auf Deutsch. RR zwischen 1:1,8 und 1:4.
+
+═══ INSTRUMENT-PARAMETER ═══
+Symbol:          ${symbol}
+Mini-Tag:        ${meta.tag}
+Kontraktgröße:   ${meta.contractSize}
+Lot-Formel:      ${meta.lotFormula}
+Handelskapital:  ${capital} $
+Aktueller Preis: ${currentPrice}
+
+═══ ANALYSE (4 ICT-Säulen — aus dem Chart-Screenshot) ═══
+① Struktur (HH / HL / LH / LL, M1-Trend)
+② Liquidität (BSL / SSL — gesweept ✓ oder noch offen)
+③ Nicht mitigierter FVG (bullisch / bärisch)
+④ Premium / Discount (Range, EQ 50%)
+
+═══ BERECHNUNG ═══
+- Risiko: 10 %, RR: zwischen 1:1,8 und 1:4
+- Entry = aktueller Preis (${currentPrice})
+- SL = hinter strukturellem Punkt + kleiner Puffer
+- TP = erste Liquidität die RR 1:1,8–1:4 ergibt
+- Lot = ${meta.lotFormula}, gerundet auf 0,01
+- tpPnl = Lot × |TP − Entry| × ${meta.contractSize}
+- slPnl = Lot × |Entry − SL| × ${meta.contractSize}
+- riskPct   = (slPnl / Kapital) × 100
+- rewardPct = (tpPnl / Kapital) × 100
+
+═══ AUSGABE ═══
+Antworte AUSSCHLIESSLICH mit diesem JSON — kein Text davor oder danach, kein Markdown:
+
+{
+  "structure": { "label": "Bullisch · HH+HL bestätigt", "trend": "bullish" },
+  "liquidity": { "label": "BSL bei X gesweept ✓\\nSSL bei Y noch offen" },
+  "fvg":       { "label": "↑ Bullisch FVG · X–Y\\nNicht mitigiert", "type": "bullish" },
+  "premDisc":  { "label": "Discount · EQ bei X", "zone": "discount" },
+  "trade": {
+    "direction":  "long",
+    "entry":      0.00,
+    "sl":         0.00,
+    "tp":         0.00,
+    "rr":         0.00,
+    "lot":        0.00,
+    "tpPnl":      0.00,
+    "slPnl":      0.00,
+    "riskPct":    10.00,
+    "rewardPct":  0.00
+  }
+}
+
+Regeln:
+- direction: "long" oder "short"
+- trend: "bullish" / "bearish" / "neutral"
+- type (FVG): "bullish" / "bearish" / "none"
+- zone: "premium" / "discount"
+- Alle Preise mit 2 Dezimalstellen (Forex: 5 Dezimalstellen)
+- Nur echte Werte aus dem Chart — keine Schätzungen erfinden`;
+}
+
+async function callClaudeVision({ image, symbol, capital, currentPrice, apiKey }) {
+  const prompt = buildClaudeVisionPrompt(symbol, capital, currentPrice);
+
+  const response = await axios.post(
+    'https://api.anthropic.com/v1/messages',
+    {
+      model:      'claude-opus-4-5',
+      max_tokens: 1000,
+      messages: [{
+        role:    'user',
+        content: [
+          {
+            type:   'image',
+            source: { type: 'base64', media_type: 'image/png', data: image },
+          },
+          {
+            type: 'text',
+            text: prompt,
+          },
+        ],
+      }],
+    },
+    {
+      headers: {
+        'x-api-key':         apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type':      'application/json',
+      },
+      timeout: 45000,
+    }
+  );
+
+  const raw  = response.data.content[0].text.trim()
+    .replace(/^```json\s*/i, '').replace(/```\s*$/i, '');
+  const json = JSON.parse(raw);
+
+  // Validate required fields
+  if (!json.trade || !json.structure || !json.liquidity || !json.fvg || !json.premDisc) {
+    throw new Error('Claude Vision: unvollständige Antwort');
+  }
+
+  return json;
+}
+
+module.exports = { streamAI, callClaudeVision, streamAnthropicRaw, sseToken, sseDone, sseError };
 
 // ── Raw streaming helpers (re-exported for mediator) ─────────────────────────
 

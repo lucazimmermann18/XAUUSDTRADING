@@ -7,7 +7,7 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const { fetchTimeSeries, fetchPrice, toTDSymbol, getDemoPrice, WS_URL } = require('./src/twelvedata');
-const { streamAI, sseToken, sseDone, sseError }                        = require('./src/ai-providers');
+const { streamAI, callClaudeVision, sseToken, sseDone, sseError }      = require('./src/ai-providers');
 const { dualValidate, buildMediatorPrompt }                             = require('./src/dual-validator');
 
 const app = express();
@@ -50,6 +50,28 @@ app.get('/api/price', async (req, res) => {
     res.json({ success: true, symbol, price });
   } catch (err) {
     console.error('[/api/price]', err.message);
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ─── REST: Claude Vision — primary ICT analysis from chart screenshot ────────
+app.post('/api/claude-analyze', async (req, res) => {
+  const { image, symbol, capital, currentPrice } = req.body;
+
+  if (!image || !symbol || !capital) {
+    return res.status(400).json({ error: 'Fehlende Parameter: image, symbol, capital' });
+  }
+
+  const apiKey = process.env.ANTHROPIC_API_KEY;
+  if (!apiKey || apiKey.startsWith('your_')) {
+    return res.status(400).json({ error: 'ANTHROPIC_API_KEY nicht konfiguriert' });
+  }
+
+  try {
+    const result = await callClaudeVision({ image, symbol, capital, currentPrice, apiKey });
+    res.json({ success: true, result });
+  } catch (err) {
+    console.error('[/api/claude-analyze]', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
 });
