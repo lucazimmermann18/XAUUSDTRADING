@@ -237,24 +237,47 @@ async function streamAI({ provider, symbol, candles, analysis, trade, capital, a
 // ── Claude Vision — primary ICT analysis from chart screenshot ────────────────
 
 const INSTRUMENTS_META = {
-  XAUUSD: { tag: 'GOLD · M1',  contractSize: 100, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100)', accent: '#D4AF37' },
-  BTCUSD: { tag: 'BTC · M1',   contractSize: 1,   lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',   accent: '#F7931A' },
-  EURUSD: { tag: 'EURUSD · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#3B82F6' },
-  GBPUSD: { tag: 'GBPUSD · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#8B5CF6' },
-  USDJPY: { tag: 'USDJPY · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#EC4899' },
-  GBPJPY: { tag: 'GBPJPY · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#F59E0B' },
-  AUDUSD: { tag: 'AUDUSD · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#10B981' },
-  USDCHF: { tag: 'USDCHF · M1',contractSize: 100000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100000)', accent: '#EF4444' },
-  US500:  { tag: 'US500 · M1', contractSize: 50,   lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 50)',   accent: '#6366F1' },
-  NAS100: { tag: 'NAS100 · M1',contractSize: 20,   lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 20)',  accent: '#06B6D4' },
-  US30:   { tag: 'US30 · M1',  contractSize: 5,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 5)',   accent: '#84CC16' },
-  GER40:  { tag: 'GER40 · M1', contractSize: 25,   lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 25)',  accent: '#F97316' },
-  XAGUSD: { tag: 'SILBER · M1',contractSize: 5000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 5000)',accent: '#94A3B8' },
-  USOIL:  { tag: 'OIL · M1',   contractSize: 1000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1000)', accent: '#78716C' },
-  XCUUSD: { tag: 'KUPFER · M1',contractSize: 25000,lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 25000)',accent: '#B45309' },
-  ETHUSD: { tag: 'ETH · M1',   contractSize: 1,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',   accent: '#818CF8' },
-  SOLUSD: { tag: 'SOL · M1',   contractSize: 1,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',   accent: '#34D399' },
+  // Commodities
+  XAUUSD:   { tag: 'GOLD · M1',    contractSize: 100,   lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 100)',    accent: '#D4AF37' },
+  XAGUSD:   { tag: 'SILBER · M1',  contractSize: 5000,  lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 5000)',   accent: '#94A3B8' },
+  USOIL:    { tag: 'OIL · M1',     contractSize: 1000,  lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1000)',   accent: '#78716C' },
+  XCUUSD:   { tag: 'KUPFER · M1',  contractSize: 25000, lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 25000)',  accent: '#B45309' },
+  // Indices
+  US500:    { tag: 'US500 · M1',   contractSize: 50,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 50)',     accent: '#6366F1' },
+  NAS100:   { tag: 'NAS100 · M1',  contractSize: 20,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 20)',     accent: '#06B6D4' },
+  US30:     { tag: 'US30 · M1',    contractSize: 5,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 5)',      accent: '#84CC16' },
+  GER40:    { tag: 'GER40 · M1',   contractSize: 25,    lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 25)',     accent: '#F97316' },
+  // Crypto
+  BTCUSD:   { tag: 'BTC · M1',     contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#F7931A' },
+  ETHUSD:   { tag: 'ETH · M1',     contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#818CF8' },
+  SOLUSD:   { tag: 'SOL · M1',     contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#34D399' },
+  XRPUSD:   { tag: 'XRP · M1',     contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#00AAE4' },
+  BNBUSD:   { tag: 'BNB · M1',     contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#F3BA2F' },
+  ADAUSD:   { tag: 'ADA · M1',     contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#0033AD' },
+  DOGEUSD:  { tag: 'DOGE · M1',    contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#C2A633' },
+  LTCUSD:   { tag: 'LTC · M1',     contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#BFBBBB' },
+  DOTUSD:   { tag: 'DOT · M1',     contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#E6007A' },
+  LINKUSD:  { tag: 'LINK · M1',    contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#2A5ADA' },
+  AVAXUSD:  { tag: 'AVAX · M1',    contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#E84142' },
+  MATICUSD: { tag: 'MATIC · M1',   contractSize: 1,     lotFormula: '(Kapital × 0,10) / (|Entry − SL| × 1)',      accent: '#8247E5' },
 };
+
+// Returns instrument meta with smart fallback for forex pairs not explicitly listed
+function getInstrumentMeta(symbol) {
+  const up = symbol.toUpperCase();
+  if (INSTRUMENTS_META[up]) return INSTRUMENTS_META[up];
+  // Standard forex pairs all have contractSize 100000
+  const forex100k = { tag: `${up} · M1`, contractSize: 100000,
+    lotFormula: `(Kapital × 0,10) / (|Entry − SL| × 100000)`, accent: '#3A9BD5' };
+  // Crypto/alts (symbol ends with USD, contract 1)
+  const cryptoDefault = { tag: `${up} · M1`, contractSize: 1,
+    lotFormula: `(Kapital × 0,10) / (|Entry − SL| × 1)`, accent: '#94A3B8' };
+
+  if (up.endsWith('JPY')) return forex100k;
+  if (up.length === 6 && !up.startsWith('X')) return forex100k; // 6-char forex like EURUSD
+  if (up.endsWith('USD') && up.length <= 8) return cryptoDefault;
+  return INSTRUMENTS_META['XAUUSD']; // true fallback
+}
 
 function buildCandleTable(candles) {
   return candles
@@ -267,7 +290,7 @@ function buildCandleTable(candles) {
 }
 
 function buildClaudeVisionPrompt(symbol, capital, currentPrice, candles) {
-  const meta      = INSTRUMENTS_META[symbol] || INSTRUMENTS_META['XAUUSD'];
+  const meta      = getInstrumentMeta(symbol);
   const last200   = candles ? candles.slice(-200) : [];
   const candlesTxt = last200.length > 0
     ? `\n═══ MARKTDATEN — letzte ${last200.length} M1-Kerzen (für präzise Berechnung) ═══\n` +

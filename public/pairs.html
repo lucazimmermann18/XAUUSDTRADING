@@ -1,0 +1,440 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ICT Sniper · Pairs Diagnostic</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0A0F1C;
+      --surface:   #0F1729;
+      --border:    rgba(148,163,184,0.08);
+      --text:      #E2E8F0;
+      --muted:     #64748B;
+      --accent:    #5B8DEF;
+      --live:      #22C55E;
+      --bear:      #EF4444;
+      --warn:      #F59E0B;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'JetBrains Mono', 'Fira Code', monospace;
+      font-size: 13px;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    .page-header {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+
+    .logo { font-size: 20px; font-weight: 700; color: var(--accent); }
+    .logo span { color: var(--muted); font-weight: 400; font-size: 13px; margin-left: 8px; }
+
+    a.back { color: var(--muted); text-decoration: none; font-size: 12px; margin-left: auto; }
+    a.back:hover { color: var(--text); }
+
+    .info-bar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .info-bar p { color: var(--muted); line-height: 1.6; font-size: 12px; }
+    .info-bar strong { color: var(--text); }
+
+    .controls {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    #run-btn {
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 22px;
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.15s;
+    }
+    #run-btn:hover { opacity: 0.85; }
+    #run-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    #progress-wrap {
+      flex: 1;
+      min-width: 200px;
+      display: none;
+    }
+    #progress-bar-bg {
+      background: var(--border);
+      border-radius: 4px;
+      height: 6px;
+      overflow: hidden;
+    }
+    #progress-bar-fill {
+      background: var(--accent);
+      height: 100%;
+      width: 0%;
+      transition: width 0.4s;
+      border-radius: 4px;
+    }
+    #progress-text {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    #summary-bar {
+      display: none;
+      gap: 20px;
+      flex-wrap: wrap;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 18px;
+      margin-bottom: 20px;
+    }
+
+    .summary-chip {
+      font-size: 12px;
+    }
+    .summary-chip .count { font-size: 18px; font-weight: 700; }
+    .summary-chip.live   .count { color: var(--live); }
+    .summary-chip.unavail .count { color: var(--bear); }
+    .summary-chip.rl     .count { color: var(--warn); }
+
+    .group-section { margin-bottom: 28px; }
+    .group-title {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 8px;
+      padding-bottom: 6px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .pairs-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+      gap: 8px;
+    }
+
+    .pair-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      transition: border-color 0.2s;
+    }
+    .pair-card.live     { border-left: 3px solid var(--live); }
+    .pair-card.unavailable { border-left: 3px solid var(--bear); }
+    .pair-card.rate_limit  { border-left: 3px solid var(--warn); }
+    .pair-card.pending  { border-left: 3px solid var(--border); opacity: 0.5; }
+
+    .pair-icon {
+      width: 36px; height: 36px;
+      border-radius: 6px;
+      background: rgba(91,141,239,0.1);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 11px; font-weight: 700; color: var(--accent);
+      flex-shrink: 0;
+    }
+
+    .pair-info { flex: 1; min-width: 0; }
+    .pair-name { font-weight: 700; font-size: 13px; }
+    .pair-price {
+      font-size: 12px;
+      color: var(--live);
+      margin-top: 2px;
+    }
+    .pair-error {
+      font-size: 10px;
+      color: var(--bear);
+      margin-top: 2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 160px;
+    }
+    .pair-warn {
+      font-size: 10px;
+      color: var(--warn);
+      margin-top: 2px;
+    }
+
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-dot.live      { background: var(--live); box-shadow: 0 0 6px var(--live); }
+    .status-dot.unavailable{ background: var(--bear); }
+    .status-dot.rate_limit { background: var(--warn); }
+    .status-dot.pending   { background: var(--muted); }
+
+    .spinner {
+      display: inline-block;
+      width: 14px; height: 14px;
+      border: 2px solid rgba(91,141,239,0.3);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+
+<div class="page-header">
+  <div class="logo">ICT SNIPER <span>· Pairs Diagnostic</span></div>
+  <a href="/" class="back">← Zurück zum Trading</a>
+</div>
+
+<div class="info-bar">
+  <p>
+    Dieser Test prüft für jedes Instrument ob TwelveData einen Preis liefert.<br>
+    <strong>Free Plan:</strong> 8 Anfragen/Minute — der Check läuft sequenziell (~8s pro Paar).
+    Lass die Seite offen bis alle Paare geprüft sind.
+  </p>
+</div>
+
+<div class="controls">
+  <button id="run-btn">▶ Check starten</button>
+  <div id="progress-wrap">
+    <div id="progress-bar-bg"><div id="progress-bar-fill"></div></div>
+    <div id="progress-text">0 / 0 geprüft</div>
+  </div>
+</div>
+
+<div id="summary-bar">
+  <div class="summary-chip live"><div class="count" id="count-live">0</div><div>Live</div></div>
+  <div class="summary-chip unavail"><div class="count" id="count-unavail">0</div><div>Nicht verfügbar</div></div>
+  <div class="summary-chip rl"><div class="count" id="count-rl">0</div><div>Rate Limit</div></div>
+</div>
+
+<div id="pairs-container"></div>
+
+<script>
+(function () {
+  const INSTRUMENTS = [
+    // Forex Majors
+    { symbol: 'EURUSD',   name: 'EUR/USD',   group: 'Forex' },
+    { symbol: 'GBPUSD',   name: 'GBP/USD',   group: 'Forex' },
+    { symbol: 'USDJPY',   name: 'USD/JPY',   group: 'Forex' },
+    { symbol: 'USDCHF',   name: 'USD/CHF',   group: 'Forex' },
+    { symbol: 'AUDUSD',   name: 'AUD/USD',   group: 'Forex' },
+    { symbol: 'USDCAD',   name: 'USD/CAD',   group: 'Forex' },
+    { symbol: 'NZDUSD',   name: 'NZD/USD',   group: 'Forex' },
+    { symbol: 'EURGBP',   name: 'EUR/GBP',   group: 'Forex' },
+    { symbol: 'EURJPY',   name: 'EUR/JPY',   group: 'Forex' },
+    { symbol: 'EURCHF',   name: 'EUR/CHF',   group: 'Forex' },
+    { symbol: 'EURAUD',   name: 'EUR/AUD',   group: 'Forex' },
+    { symbol: 'EURCAD',   name: 'EUR/CAD',   group: 'Forex' },
+    { symbol: 'EURNZD',   name: 'EUR/NZD',   group: 'Forex' },
+    { symbol: 'GBPJPY',   name: 'GBP/JPY',   group: 'Forex' },
+    { symbol: 'GBPCHF',   name: 'GBP/CHF',   group: 'Forex' },
+    { symbol: 'GBPAUD',   name: 'GBP/AUD',   group: 'Forex' },
+    { symbol: 'GBPCAD',   name: 'GBP/CAD',   group: 'Forex' },
+    { symbol: 'GBPNZD',   name: 'GBP/NZD',   group: 'Forex' },
+    { symbol: 'AUDJPY',   name: 'AUD/JPY',   group: 'Forex' },
+    { symbol: 'CADJPY',   name: 'CAD/JPY',   group: 'Forex' },
+    { symbol: 'CHFJPY',   name: 'CHF/JPY',   group: 'Forex' },
+    { symbol: 'NZDJPY',   name: 'NZD/JPY',   group: 'Forex' },
+    { symbol: 'AUDCAD',   name: 'AUD/CAD',   group: 'Forex' },
+    { symbol: 'AUDCHF',   name: 'AUD/CHF',   group: 'Forex' },
+    { symbol: 'AUDNZD',   name: 'AUD/NZD',   group: 'Forex' },
+    { symbol: 'CADCHF',   name: 'CAD/CHF',   group: 'Forex' },
+    { symbol: 'NZDCAD',   name: 'NZD/CAD',   group: 'Forex' },
+    { symbol: 'NZDCHF',   name: 'NZD/CHF',   group: 'Forex' },
+    // Indices
+    { symbol: 'US500',    name: 'US500',      group: 'Indizes' },
+    { symbol: 'NAS100',   name: 'NAS100',     group: 'Indizes' },
+    { symbol: 'US30',     name: 'US30',       group: 'Indizes' },
+    { symbol: 'GER40',    name: 'GER40',      group: 'Indizes' },
+    // Commodities
+    { symbol: 'XAUUSD',   name: 'Gold',       group: 'Rohstoffe' },
+    { symbol: 'XAGUSD',   name: 'Silber',     group: 'Rohstoffe' },
+    { symbol: 'USOIL',    name: 'WTI Öl',     group: 'Rohstoffe' },
+    { symbol: 'XCUUSD',   name: 'Kupfer',     group: 'Rohstoffe' },
+    // Crypto
+    { symbol: 'BTCUSD',   name: 'Bitcoin',    group: 'Krypto' },
+    { symbol: 'ETHUSD',   name: 'Ethereum',   group: 'Krypto' },
+    { symbol: 'SOLUSD',   name: 'Solana',     group: 'Krypto' },
+    { symbol: 'XRPUSD',   name: 'XRP',        group: 'Krypto' },
+    { symbol: 'BNBUSD',   name: 'BNB',        group: 'Krypto' },
+    { symbol: 'ADAUSD',   name: 'Cardano',    group: 'Krypto' },
+    { symbol: 'DOGEUSD',  name: 'Dogecoin',   group: 'Krypto' },
+    { symbol: 'LTCUSD',   name: 'Litecoin',   group: 'Krypto' },
+    { symbol: 'DOTUSD',   name: 'Polkadot',   group: 'Krypto' },
+    { symbol: 'LINKUSD',  name: 'Chainlink',  group: 'Krypto' },
+    { symbol: 'AVAXUSD',  name: 'Avalanche',  group: 'Krypto' },
+    { symbol: 'MATICUSD', name: 'Polygon',    group: 'Krypto' },
+  ];
+
+  const GROUPS = ['Forex', 'Indizes', 'Rohstoffe', 'Krypto'];
+
+  const container  = document.getElementById('pairs-container');
+  const runBtn     = document.getElementById('run-btn');
+  const progressWrap = document.getElementById('progress-wrap');
+  const progressFill = document.getElementById('progress-bar-fill');
+  const progressText = document.getElementById('progress-text');
+  const summaryBar   = document.getElementById('summary-bar');
+  const countLive    = document.getElementById('count-live');
+  const countUnavail = document.getElementById('count-unavail');
+  const countRl      = document.getElementById('count-rl');
+
+  let counts = { live: 0, unavailable: 0, rate_limit: 0 };
+
+  // Build initial pending cards
+  function buildCards() {
+    container.innerHTML = '';
+    GROUPS.forEach(group => {
+      const inGroup = INSTRUMENTS.filter(i => i.group === group);
+      if (!inGroup.length) return;
+      const section = document.createElement('div');
+      section.className = 'group-section';
+      section.innerHTML = `<div class="group-title">${group}</div><div class="pairs-grid" id="grid-${group}"></div>`;
+      container.appendChild(section);
+    });
+
+    INSTRUMENTS.forEach(inst => {
+      const grid = document.getElementById(`grid-${inst.group}`);
+      if (!grid) return;
+      const card = document.createElement('div');
+      card.className = 'pair-card pending';
+      card.id = `card-${inst.symbol}`;
+      card.innerHTML = `
+        <div class="pair-icon">${inst.symbol.slice(0, 3)}</div>
+        <div class="pair-info">
+          <div class="pair-name">${inst.name}</div>
+          <div class="pair-price" style="color:var(--muted)">—</div>
+        </div>
+        <div class="status-dot pending"></div>
+      `;
+      grid.appendChild(card);
+    });
+  }
+
+  function updateCard(data) {
+    const card = document.getElementById(`card-${data.symbol}`);
+    if (!card) return;
+
+    card.className = `pair-card ${data.status}`;
+
+    let priceHtml = '';
+    if (data.status === 'live') {
+      priceHtml = `<div class="pair-price">${data.price}</div>`;
+      counts.live++;
+    } else if (data.status === 'rate_limit') {
+      priceHtml = `<div class="pair-warn">Rate Limit</div>`;
+      counts.rate_limit++;
+    } else {
+      const errShort = (data.error || 'N/A').replace(/TwelveData API (Fehler|Error)/i, '').trim().slice(0, 60);
+      priceHtml = `<div class="pair-error">${errShort || 'Nicht verfügbar'}</div>`;
+      counts.unavailable++;
+    }
+
+    card.innerHTML = `
+      <div class="pair-icon">${data.symbol.slice(0, 3)}</div>
+      <div class="pair-info">
+        <div class="pair-name">${data.name}</div>
+        ${priceHtml}
+      </div>
+      <div class="status-dot ${data.status}"></div>
+    `;
+
+    countLive.textContent    = counts.live;
+    countUnavail.textContent = counts.unavailable;
+    countRl.textContent      = counts.rate_limit;
+  }
+
+  // Mark next pending card as "checking"
+  function markChecking(index) {
+    if (index >= INSTRUMENTS.length) return;
+    const sym  = INSTRUMENTS[index].symbol;
+    const card = document.getElementById(`card-${sym}`);
+    if (!card) return;
+    const dot = card.querySelector('.status-dot');
+    if (dot) dot.outerHTML = `<span class="spinner"></span>`;
+  }
+
+  runBtn.addEventListener('click', () => {
+    runBtn.disabled = true;
+    runBtn.textContent = '⏳ Läuft…';
+    counts = { live: 0, unavailable: 0, rate_limit: 0 };
+    buildCards();
+    progressWrap.style.display = 'block';
+    summaryBar.style.display = 'flex';
+    progressText.textContent = `0 / ${INSTRUMENTS.length} geprüft`;
+    markChecking(0);
+
+    const es = new EventSource('/api/pairs-status');
+
+    es.addEventListener('start', () => {});
+
+    es.addEventListener('result', (e) => {
+      const data = JSON.parse(e.data);
+      updateCard(data);
+
+      const done = data.index + 1;
+      const pct  = Math.round((done / INSTRUMENTS.length) * 100);
+      progressFill.style.width = pct + '%';
+
+      const remaining = INSTRUMENTS.length - done;
+      const etaSecs   = remaining * 8;
+      const etaMin    = Math.floor(etaSecs / 60);
+      const etaSec    = etaSecs % 60;
+      const etaTxt    = etaMin > 0
+        ? `~${etaMin}m ${etaSec}s verbleibend`
+        : etaSecs > 0 ? `~${etaSecs}s verbleibend` : 'abgeschlossen';
+      progressText.textContent = `${done} / ${INSTRUMENTS.length} geprüft · ${etaTxt}`;
+
+      if (done < INSTRUMENTS.length) markChecking(done);
+    });
+
+    es.addEventListener('done', () => {
+      es.close();
+      runBtn.disabled = false;
+      runBtn.textContent = '↺ Erneut prüfen';
+      progressFill.style.width = '100%';
+      progressText.textContent = `${INSTRUMENTS.length} / ${INSTRUMENTS.length} geprüft · ✓ Fertig`;
+    });
+
+    es.onerror = () => {
+      es.close();
+      runBtn.disabled = false;
+      runBtn.textContent = '↺ Erneut prüfen';
+      progressText.textContent = 'Verbindungsfehler — bitte erneut prüfen';
+    };
+  });
+
+  buildCards();
+})();
+</script>
+
+</body>
+</html>

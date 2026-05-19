@@ -28,6 +28,10 @@ app.get('/journal', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'journal.html'));
 });
 
+app.get('/pairs', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'pairs.html'));
+});
+
 
 // ─── REST: Candles ───────────────────────────────────────────────────────────
 app.get('/api/candles', async (req, res) => {
@@ -54,6 +58,96 @@ app.get('/api/price', async (req, res) => {
     console.error('[/api/price]', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// ─── REST: Pairs Status (SSE) — diagnostic check of all instruments ──────────
+const PAIRS_STATUS_LIST = [
+  // Forex Majors
+  { symbol: 'EURUSD',   name: 'EUR/USD',   group: 'Forex'     },
+  { symbol: 'GBPUSD',   name: 'GBP/USD',   group: 'Forex'     },
+  { symbol: 'USDJPY',   name: 'USD/JPY',   group: 'Forex'     },
+  { symbol: 'USDCHF',   name: 'USD/CHF',   group: 'Forex'     },
+  { symbol: 'AUDUSD',   name: 'AUD/USD',   group: 'Forex'     },
+  { symbol: 'USDCAD',   name: 'USD/CAD',   group: 'Forex'     },
+  { symbol: 'NZDUSD',   name: 'NZD/USD',   group: 'Forex'     },
+  // EUR Crosses
+  { symbol: 'EURGBP',   name: 'EUR/GBP',   group: 'Forex'     },
+  { symbol: 'EURJPY',   name: 'EUR/JPY',   group: 'Forex'     },
+  { symbol: 'EURCHF',   name: 'EUR/CHF',   group: 'Forex'     },
+  { symbol: 'EURAUD',   name: 'EUR/AUD',   group: 'Forex'     },
+  { symbol: 'EURCAD',   name: 'EUR/CAD',   group: 'Forex'     },
+  { symbol: 'EURNZD',   name: 'EUR/NZD',   group: 'Forex'     },
+  // GBP Crosses
+  { symbol: 'GBPJPY',   name: 'GBP/JPY',   group: 'Forex'     },
+  { symbol: 'GBPCHF',   name: 'GBP/CHF',   group: 'Forex'     },
+  { symbol: 'GBPAUD',   name: 'GBP/AUD',   group: 'Forex'     },
+  { symbol: 'GBPCAD',   name: 'GBP/CAD',   group: 'Forex'     },
+  { symbol: 'GBPNZD',   name: 'GBP/NZD',   group: 'Forex'     },
+  // JPY Crosses
+  { symbol: 'AUDJPY',   name: 'AUD/JPY',   group: 'Forex'     },
+  { symbol: 'CADJPY',   name: 'CAD/JPY',   group: 'Forex'     },
+  { symbol: 'CHFJPY',   name: 'CHF/JPY',   group: 'Forex'     },
+  { symbol: 'NZDJPY',   name: 'NZD/JPY',   group: 'Forex'     },
+  // Other Crosses
+  { symbol: 'AUDCAD',   name: 'AUD/CAD',   group: 'Forex'     },
+  { symbol: 'AUDCHF',   name: 'AUD/CHF',   group: 'Forex'     },
+  { symbol: 'AUDNZD',   name: 'AUD/NZD',   group: 'Forex'     },
+  { symbol: 'CADCHF',   name: 'CAD/CHF',   group: 'Forex'     },
+  { symbol: 'NZDCAD',   name: 'NZD/CAD',   group: 'Forex'     },
+  { symbol: 'NZDCHF',   name: 'NZD/CHF',   group: 'Forex'     },
+  // Indices
+  { symbol: 'US500',    name: 'US500',      group: 'Indizes'   },
+  { symbol: 'NAS100',   name: 'NAS100',     group: 'Indizes'   },
+  { symbol: 'US30',     name: 'US30',       group: 'Indizes'   },
+  { symbol: 'GER40',    name: 'GER40',      group: 'Indizes'   },
+  // Commodities
+  { symbol: 'XAUUSD',   name: 'Gold',       group: 'Rohstoffe' },
+  { symbol: 'XAGUSD',   name: 'Silber',     group: 'Rohstoffe' },
+  { symbol: 'USOIL',    name: 'WTI Öl',     group: 'Rohstoffe' },
+  { symbol: 'XCUUSD',   name: 'Kupfer',     group: 'Rohstoffe' },
+  // Crypto
+  { symbol: 'BTCUSD',   name: 'Bitcoin',    group: 'Krypto'    },
+  { symbol: 'ETHUSD',   name: 'Ethereum',   group: 'Krypto'    },
+  { symbol: 'SOLUSD',   name: 'Solana',     group: 'Krypto'    },
+  { symbol: 'XRPUSD',   name: 'XRP',        group: 'Krypto'    },
+  { symbol: 'BNBUSD',   name: 'BNB',        group: 'Krypto'    },
+  { symbol: 'ADAUSD',   name: 'Cardano',    group: 'Krypto'    },
+  { symbol: 'DOGEUSD',  name: 'Dogecoin',   group: 'Krypto'    },
+  { symbol: 'LTCUSD',   name: 'Litecoin',   group: 'Krypto'    },
+  { symbol: 'DOTUSD',   name: 'Polkadot',   group: 'Krypto'    },
+  { symbol: 'LINKUSD',  name: 'Chainlink',  group: 'Krypto'    },
+  { symbol: 'AVAXUSD',  name: 'Avalanche',  group: 'Krypto'    },
+  { symbol: 'MATICUSD', name: 'Polygon',    group: 'Krypto'    },
+];
+
+app.get('/api/pairs-status', async (req, res) => {
+  res.setHeader('Content-Type',  'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection',    'keep-alive');
+  res.flushHeaders();
+
+  const send = (event, data) => {
+    if (!res.writableEnded) res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+  };
+
+  send('start', { total: PAIRS_STATUS_LIST.length });
+
+  for (let i = 0; i < PAIRS_STATUS_LIST.length; i++) {
+    const inst = PAIRS_STATUS_LIST[i];
+    try {
+      const price = await fetchPrice(inst.symbol, API_KEY);
+      send('result', { ...inst, price, status: 'live', index: i });
+    } catch (err) {
+      const msg    = err.message || '';
+      const status = msg.includes('429') || msg.toLowerCase().includes('rate') ? 'rate_limit' : 'unavailable';
+      send('result', { ...inst, price: null, status, error: msg.slice(0, 120), index: i });
+    }
+    // Respect Free Plan rate limit: 8 req/min ≈ 1 per 8s
+    if (i < PAIRS_STATUS_LIST.length - 1) await new Promise(r => setTimeout(r, 8000));
+  }
+
+  send('done', { total: PAIRS_STATUS_LIST.length });
+  res.end();
 });
 
 // ─── REST: Claude Vision — primary ICT analysis from chart screenshot ────────

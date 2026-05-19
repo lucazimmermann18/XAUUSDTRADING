@@ -6,33 +6,35 @@ const BASE_URL = 'https://api.twelvedata.com';
 const WS_URL = 'wss://ws.twelvedata.com/v1/quotes/price';
 
 /**
- * Map internal symbol names to TwelveData API symbols
+ * Map internal symbol names to TwelveData API symbols.
+ * Special cases are explicit; standard 6-char forex/crypto
+ * are auto-converted by inserting '/' after the 3rd character.
  */
 function toTDSymbol(symbol) {
-  const map = {
-    // Forex
-    'EURUSD': 'EUR/USD',
-    'GBPUSD': 'GBP/USD',
-    'USDJPY': 'USD/JPY',
-    'GBPJPY': 'GBP/JPY',
-    'AUDUSD': 'AUD/USD',
-    'USDCHF': 'USD/CHF',
-    // Indizes
-    'US500':  'SPX',
-    'NAS100': 'NDX',
-    'US30':   'DJI',
-    'GER40':  'GER40',
-    // Rohstoffe
-    'XAUUSD': 'XAU/USD',
-    'XAGUSD': 'XAG/USD',
-    'USOIL':  'WTI/USD',
-    'XCUUSD': 'COPPER',
-    // Krypto
-    'BTCUSD': 'BTC/USD',
-    'ETHUSD': 'ETH/USD',
-    'SOLUSD': 'SOL/USD',
+  const special = {
+    // Indices
+    'US500':    'SPX',
+    'NAS100':   'NDX',
+    'US30':     'DJI',
+    'GER40':    'GER40',
+    // Commodities
+    'XAUUSD':   'XAU/USD',
+    'XAGUSD':   'XAG/USD',
+    'USOIL':    'WTI/USD',
+    'XCUUSD':   'COPPER',
+    // Crypto with >6-char internal symbols
+    'DOGEUSD':  'DOGE/USD',
+    'LINKUSD':  'LINK/USD',
+    'AVAXUSD':  'AVAX/USD',
+    'MATICUSD': 'MATIC/USD',
   };
-  return map[symbol.toUpperCase()] || symbol;
+  const up = symbol.toUpperCase();
+  if (special[up]) return special[up];
+  // Auto-convert 6-char symbols: EURUSD -> EUR/USD, BNBUSD -> BNB/USD
+  if (up.length === 6 && !up.includes('/')) {
+    return `${up.slice(0, 3)}/${up.slice(3)}`;
+  }
+  return symbol;
 }
 
 /**

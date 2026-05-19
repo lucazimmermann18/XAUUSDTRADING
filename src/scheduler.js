@@ -6,25 +6,64 @@ const { callClaudeVision }               = require('./ai-providers');
 const { dualValidate }                   = require('./dual-validator');
 const { sendTelegram, formatSignal }     = require('./telegram');
 
-// All 17 instruments with their API symbols and contract sizes
+// All instruments — scheduler only processes those that return real data
 const INSTRUMENTS = [
-  { symbol: 'XAUUSD',  apiSymbol: 'XAU/USD', contractSize: 100   },
-  { symbol: 'XAGUSD',  apiSymbol: 'XAG/USD', contractSize: 5000  },
-  { symbol: 'BTCUSD',  apiSymbol: 'BTC/USD', contractSize: 1     },
-  { symbol: 'ETHUSD',  apiSymbol: 'ETH/USD', contractSize: 1     },
-  { symbol: 'SOLUSD',  apiSymbol: 'SOL/USD', contractSize: 1     },
-  { symbol: 'EURUSD',  apiSymbol: 'EUR/USD', contractSize: 100000 },
-  { symbol: 'GBPUSD',  apiSymbol: 'GBP/USD', contractSize: 100000 },
-  { symbol: 'USDJPY',  apiSymbol: 'USD/JPY', contractSize: 100000 },
-  { symbol: 'GBPJPY',  apiSymbol: 'GBP/JPY', contractSize: 100000 },
-  { symbol: 'AUDUSD',  apiSymbol: 'AUD/USD', contractSize: 100000 },
-  { symbol: 'USDCHF',  apiSymbol: 'USD/CHF', contractSize: 100000 },
-  { symbol: 'US500',   apiSymbol: 'SPX',     contractSize: 50    },
-  { symbol: 'NAS100',  apiSymbol: 'NDX',     contractSize: 20    },
-  { symbol: 'US30',    apiSymbol: 'DJI',     contractSize: 5     },
-  { symbol: 'GER40',   apiSymbol: 'GER40',   contractSize: 25    },
-  { symbol: 'USOIL',   apiSymbol: 'WTI/USD', contractSize: 1000  },
-  { symbol: 'XCUUSD',  apiSymbol: 'COPPER',  contractSize: 25000 },
+  // Forex Majors
+  { symbol: 'EURUSD',   contractSize: 100000 },
+  { symbol: 'GBPUSD',   contractSize: 100000 },
+  { symbol: 'USDJPY',   contractSize: 100000 },
+  { symbol: 'USDCHF',   contractSize: 100000 },
+  { symbol: 'AUDUSD',   contractSize: 100000 },
+  { symbol: 'USDCAD',   contractSize: 100000 },
+  { symbol: 'NZDUSD',   contractSize: 100000 },
+  // EUR Crosses
+  { symbol: 'EURGBP',   contractSize: 100000 },
+  { symbol: 'EURJPY',   contractSize: 100000 },
+  { symbol: 'EURCHF',   contractSize: 100000 },
+  { symbol: 'EURAUD',   contractSize: 100000 },
+  { symbol: 'EURCAD',   contractSize: 100000 },
+  { symbol: 'EURNZD',   contractSize: 100000 },
+  // GBP Crosses
+  { symbol: 'GBPJPY',   contractSize: 100000 },
+  { symbol: 'GBPCHF',   contractSize: 100000 },
+  { symbol: 'GBPAUD',   contractSize: 100000 },
+  { symbol: 'GBPCAD',   contractSize: 100000 },
+  { symbol: 'GBPNZD',   contractSize: 100000 },
+  // JPY Crosses
+  { symbol: 'AUDJPY',   contractSize: 100000 },
+  { symbol: 'CADJPY',   contractSize: 100000 },
+  { symbol: 'CHFJPY',   contractSize: 100000 },
+  { symbol: 'NZDJPY',   contractSize: 100000 },
+  // Other Crosses
+  { symbol: 'AUDCAD',   contractSize: 100000 },
+  { symbol: 'AUDCHF',   contractSize: 100000 },
+  { symbol: 'AUDNZD',   contractSize: 100000 },
+  { symbol: 'CADCHF',   contractSize: 100000 },
+  { symbol: 'NZDCAD',   contractSize: 100000 },
+  { symbol: 'NZDCHF',   contractSize: 100000 },
+  // Indices
+  { symbol: 'US500',    contractSize: 50     },
+  { symbol: 'NAS100',   contractSize: 20     },
+  { symbol: 'US30',     contractSize: 5      },
+  { symbol: 'GER40',    contractSize: 25     },
+  // Commodities
+  { symbol: 'XAUUSD',   contractSize: 100    },
+  { symbol: 'XAGUSD',   contractSize: 5000   },
+  { symbol: 'USOIL',    contractSize: 1000   },
+  { symbol: 'XCUUSD',   contractSize: 25000  },
+  // Crypto
+  { symbol: 'BTCUSD',   contractSize: 1      },
+  { symbol: 'ETHUSD',   contractSize: 1      },
+  { symbol: 'SOLUSD',   contractSize: 1      },
+  { symbol: 'XRPUSD',   contractSize: 1      },
+  { symbol: 'BNBUSD',   contractSize: 1      },
+  { symbol: 'ADAUSD',   contractSize: 1      },
+  { symbol: 'DOGEUSD',  contractSize: 1      },
+  { symbol: 'LTCUSD',   contractSize: 1      },
+  { symbol: 'DOTUSD',   contractSize: 1      },
+  { symbol: 'LINKUSD',  contractSize: 1      },
+  { symbol: 'AVAXUSD',  contractSize: 1      },
+  { symbol: 'MATICUSD', contractSize: 1      },
 ];
 
 // Dedup: track last sent signal per symbol within a 1h window
