@@ -1,7 +1,7 @@
 'use strict';
 
 const cron                               = require('node-cron');
-const { fetchTimeSeries, fetchPrice }    = require('./twelvedata');
+const { fetchTimeSeriesCached, fetchPrice } = require('./twelvedata');
 const { callClaudeVision }               = require('./ai-providers');
 const { dualValidate }                   = require('./dual-validator');
 const { sendTelegram, formatSignal }     = require('./telegram');
@@ -48,7 +48,7 @@ async function analyseInstrument(inst, capital) {
   const { symbol } = inst;
   try {
     const [candles, price] = await Promise.all([
-      fetchTimeSeries(symbol, '1min', 200, process.env.TWELVE_DATA_API_KEY),
+      fetchTimeSeriesCached(symbol, '1min', 200, process.env.TWELVE_DATA_API_KEY),
       fetchPrice(symbol, process.env.TWELVE_DATA_API_KEY),
     ]);
 

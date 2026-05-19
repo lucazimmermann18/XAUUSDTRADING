@@ -101,11 +101,11 @@ const ChartManager = (() => {
       const res = await fetch(`/api/candles?symbol=${symbol}&interval=1min&outputsize=200`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const json = await res.json();
-      if (!json.success) throw new Error(json.error || 'API error');
+      if (!json.success || !json.candles || json.candles.length === 0) {
+        throw new Error(json.error || 'Kein Datenfeed für dieses Symbol (Free Plan)');
+      }
 
       currentCandles = json.candles;
-
-      if (currentCandles.length === 0) throw new Error('Keine Candledaten empfangen');
 
       // Set data
       candleSeries.setData(currentCandles);

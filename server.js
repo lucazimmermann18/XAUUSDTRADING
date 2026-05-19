@@ -6,7 +6,7 @@ const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
-const { fetchTimeSeries, fetchPrice, toTDSymbol, getDemoPrice, WS_URL } = require('./src/twelvedata');
+const { fetchTimeSeries, fetchTimeSeriesCached, fetchPrice, toTDSymbol, isSymbolLive, WS_URL } = require('./src/twelvedata');
 const { streamAI, callClaudeVision, sseToken, sseDone, sseError }      = require('./src/ai-providers');
 const { dualValidate, buildMediatorPrompt }                             = require('./src/dual-validator');
 const scheduler                                                         = require('./src/scheduler');
@@ -17,6 +17,7 @@ const wss = new WebSocket.Server({ server });
 
 const API_KEY = process.env.TWELVE_DATA_API_KEY;
 const PORT = process.env.PORT || 3000;
+
 
 // ─── Static files ────────────────────────────────────────────────────────────
 app.use(express.static(path.join(__dirname, 'public')));
@@ -30,16 +31,16 @@ app.get('/journal', (_req, res) => {
 
 // ─── REST: Candles ───────────────────────────────────────────────────────────
 app.get('/api/candles', async (req, res) => {
-  try {
-    const symbol = req.query.symbol || 'XAUUSD';
-    const interval = req.query.interval || '1min';
-    const outputsize = parseInt(req.query.outputsize) || 200;
+  const symbol     = (req.query.symbol || 'XAUUSD').toUpperCase();
+  const interval   = req.query.interval || '1min';
+  const outputsize = parseInt(req.query.outputsize) || 200;
 
-    const candles = await fetchTimeSeries(symbol, interval, outputsize, API_KEY);
-    res.json({ success: true, symbol, candles });
+  try {
+    const candles = await fetchTimeSeriesCached(symbol, interval, outputsize, API_KEY);
+    res.json({ success: true, symbol, candles, source: 'live' });
   } catch (err) {
-    console.error('[/api/candles]', err.message);
-    res.status(500).json({ success: false, error: err.message });
+    console.error(`[/api/candles] ${symbol}:`, err.message);
+    res.status(200).json({ success: false, symbol, error: err.message, candles: [] });
   }
 });
 
@@ -207,6 +208,9 @@ function startDemoTicks() {
     if (activeSymbols.size === 0) return;
 
     for (const sym of activeSymbols) {
+      // Only tick symbols that have real candle data — don't fake prices
+      // for symbols the Free Plan doesn't support
+      if (!isSymbolLive(sym)) continue;
       const price = tickDemoPrice(sym);
       const tick = {
         type:      'tick',

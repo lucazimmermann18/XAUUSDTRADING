@@ -124,8 +124,15 @@
 
     } catch (err) {
       showChartLoading(false);
-      setStatus('error', `Fehler: ${err.message.slice(0, 50)}`);
-      console.error('[App] loadSymbol error:', err);
+      // Symbol nicht im TwelveData Free Plan — Chart leeren, Analyse sperren
+      ChartManager.clearLevelLines();
+      currentPriceEl.textContent = '–';
+      setStatus('error', `${symbol} · Nicht verfügbar im Free Plan`);
+      cardOutput.innerHTML = `<div class="card-placeholder">
+        <div class="placeholder-icon" style="color:var(--bear)">⚠</div>
+        <p><strong>${symbol} nicht verfügbar</strong><br>Kein Datenfeed über TwelveData Free Plan.</p>
+      </div>`;
+      console.warn('[App] loadSymbol no data:', symbol, err.message);
     }
   }
 
