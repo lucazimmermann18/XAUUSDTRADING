@@ -9,6 +9,7 @@ const path = require('path');
 const { fetchTimeSeries, fetchPrice, toTDSymbol, getDemoPrice, WS_URL } = require('./src/twelvedata');
 const { streamAI, callClaudeVision, sseToken, sseDone, sseError }      = require('./src/ai-providers');
 const { dualValidate, buildMediatorPrompt }                             = require('./src/dual-validator');
+const scheduler                                                         = require('./src/scheduler');
 
 const app = express();
 const server = http.createServer(app);
@@ -415,6 +416,8 @@ server.listen(PORT, () => {
   // Pre-connect to TwelveData WS for XAUUSD; will fall back to demo mode if needed
   pendingSubscriptions.add('XAUUSD');
   connectTwelveDataWS();
+  // Start Telegram signal scheduler (07:00–21:00 Berlin, every 30 min)
+  scheduler.start();
 });
 
 // ─── Graceful shutdown (PM2 / SIGTERM) ───────────────────────────────────────

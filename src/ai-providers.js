@@ -342,24 +342,20 @@ Regeln:
 async function callClaudeVision({ image, symbol, capital, currentPrice, candles, apiKey }) {
   const prompt = buildClaudeVisionPrompt(symbol, capital, currentPrice, candles);
 
+  // image is optional — when null (e.g. headless scheduler), send text-only
+  const content = image
+    ? [
+        { type: 'image', source: { type: 'base64', media_type: 'image/png', data: image } },
+        { type: 'text',  text: prompt },
+      ]
+    : prompt;
+
   const response = await axios.post(
     'https://api.anthropic.com/v1/messages',
     {
       model:      'claude-opus-4-5',
       max_tokens: 1000,
-      messages: [{
-        role:    'user',
-        content: [
-          {
-            type:   'image',
-            source: { type: 'base64', media_type: 'image/png', data: image },
-          },
-          {
-            type: 'text',
-            text: prompt,
-          },
-        ],
-      }],
+      messages: [{ role: 'user', content }],
     },
     {
       headers: {
