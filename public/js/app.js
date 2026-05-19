@@ -218,20 +218,24 @@
       const cardHTML = TradeCard.render(result);
       cardOutput.innerHTML = cardHTML;
 
-      // Auto-save to journal + start price monitoring
-      const tradeId = JournalStore.add(result);
-      showJournalToast(tradeId);
-      TradeMonitor.onNewTrade(result.symbol);
-
-      // Inject AI commentary panel below trade card
-      aiPanelContainer.innerHTML = AICommentator.renderPanel();
-      AICommentator.setAnalysisResult(result);
-      AICommentator.bindEvents();
-
       cardOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
       const dir = result.trade.direction === 'long' ? '↑ Long' : '↓ Short';
-      setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · Analyse abgeschlossen`);
+      setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · KI-Validation läuft…`);
+
+      // Dual-KI quality gate — journal + monitoring happen inside callbacks
+      DualValidatorUI.start(aiPanelContainer, {
+        result,
+        capital,
+        onPassed: ({ tradeId }) => {
+          showJournalToast(tradeId);
+          TradeMonitor.onNewTrade(result.symbol);
+          setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · ✅ Trade validiert`);
+        },
+        onRejected: () => {
+          setStatus('ready', `${dir} · RR 1:${result.trade.rr.toFixed(2)} · ❌ Trade abgelehnt`);
+        },
+      });
 
     } catch (err) {
       console.error('[App] Analysis error:', err);

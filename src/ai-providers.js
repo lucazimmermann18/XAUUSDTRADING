@@ -196,14 +196,16 @@ async function streamGemini(prompt, apiKey, res) {
 
 // ── Main Stream Dispatcher ────────────────────────────────────────────────────
 
-async function streamAI({ provider, symbol, candles, analysis, trade, capital, apiKeys, res }) {
-  // Set SSE headers
-  res.setHeader('Content-Type',  'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection',    'keep-alive');
-  res.flushHeaders();
+async function streamAI({ provider, symbol, candles, analysis, trade, capital, apiKeys, res, _customPrompt }) {
+  // Set SSE headers (skip if already set — e.g. from /api/mediator)
+  if (!res.headersSent) {
+    res.setHeader('Content-Type',  'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection',    'keep-alive');
+    res.flushHeaders();
+  }
 
-  const prompt = buildPrompt(symbol, candles, analysis, trade, capital);
+  const prompt = _customPrompt || buildPrompt(symbol, candles, analysis, trade, capital);
 
   try {
     switch (provider) {
@@ -232,4 +234,10 @@ async function streamAI({ provider, symbol, candles, analysis, trade, capital, a
   res.end();
 }
 
-module.exports = { streamAI };
+module.exports = { streamAI, streamAnthropicRaw, sseToken, sseDone, sseError };
+
+// ── Raw streaming helpers (re-exported for mediator) ─────────────────────────
+
+async function streamAnthropicRaw(prompt, apiKey, res) {
+  await streamAnthropic(prompt, apiKey, res);
+}

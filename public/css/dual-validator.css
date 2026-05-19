@@ -1,0 +1,293 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   ICT SNIPER — Dual-KI Validation Panel
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Outer Panel ─────────────────────────────────────────────────────────── */
+.dv-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  margin-top: 16px;
+}
+
+.dv-header {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dv-title {
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  color: var(--text-primary);
+}
+
+.dv-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ── Two Agent Cards ─────────────────────────────────────────────────────── */
+.dv-agents {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.dv-agent-card {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: background 0.3s;
+}
+
+.dv-agent-card:first-child {
+  border-right: 1px solid var(--border);
+}
+
+.dv-agent-card.loading { background: rgba(255,255,255,0.01); }
+.dv-agent-card.ok      { background: rgba(34,197,94,0.04); }
+.dv-agent-card.fail    { background: rgba(239,68,68,0.04); }
+
+/* ── Agent Header ────────────────────────────────────────────────────────── */
+.dv-agent-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dv-logo {
+  font-size: 18px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.dv-logo.claude { color: var(--accent); }
+.dv-logo.openai { color: #74AA9C; }
+
+.dv-agent-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-primary);
+  flex: 1;
+}
+
+.dv-agent-verdict-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dv-agent-verdict-icon.ok   { background: var(--bull-dim); color: var(--bull); }
+.dv-agent-verdict-icon.fail { background: var(--bear-dim); color: var(--bear); }
+
+/* ── Agent Body ──────────────────────────────────────────────────────────── */
+.dv-agent-body {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dv-verdict-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Direction badge */
+.dv-dir {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.dv-dir.long  { background: var(--bull-dim); color: var(--bull); }
+.dv-dir.short { background: var(--bear-dim); color: var(--bear); }
+.dv-dir.none  { background: rgba(148,163,184,0.1); color: var(--text-muted); }
+
+/* Confidence badge */
+.dv-conf {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dv-conf.high { background: rgba(34,197,94,0.12); color: #22C55E; }
+.dv-conf.med  { background: rgba(234,179,8,0.12);  color: var(--gold); }
+.dv-conf.low  { background: rgba(239,68,68,0.12);  color: var(--bear); }
+
+/* Reasons list */
+.dv-reasons {
+  margin: 0;
+  padding: 0 0 0 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+/* Risk warning */
+.dv-risk {
+  font-size: 10px;
+  color: var(--gold);
+  background: var(--gold-dim);
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1.4;
+}
+
+/* Spinner */
+.dv-spinner {
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  flex-shrink: 0;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Quality Gate ────────────────────────────────────────────────────────── */
+.dv-gate {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+.dv-gate.pass { background: rgba(34,197,94,0.06); }
+.dv-gate.fail { background: rgba(239,68,68,0.06); }
+
+.dv-gate-icon {
+  font-size: 20px;
+  flex-shrink: 0;
+  line-height: 1.3;
+}
+
+.dv-gate-text {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.5;
+}
+
+.dv-gate-text strong {
+  font-weight: 800;
+}
+
+.dv-gate-sub {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+/* ── Mediator Panel ──────────────────────────────────────────────────────── */
+.dv-mediator {
+  padding: 16px 20px;
+}
+
+.dv-med-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  gap: 12px;
+}
+
+.dv-med-title {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--text-primary);
+}
+
+/* Confidence bar */
+.dv-conf-bar {
+  flex: 1;
+  max-width: 200px;
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  position: relative;
+  overflow: visible;
+}
+
+.dv-conf-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--bear) 0%, var(--gold) 50%, var(--bull) 100%);
+  border-radius: 3px;
+  transition: width 1s ease;
+  background-size: 200px 100%;
+}
+
+.dv-conf-label {
+  position: absolute;
+  right: 0;
+  top: -18px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  font-weight: 700;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+/* Mediator text */
+.dv-med-body {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.7;
+}
+
+.dv-med-body strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.dv-med-body.streaming {
+  opacity: 0.9;
+}
+
+.dv-cursor {
+  display: inline-block;
+  animation: blink 1s step-start infinite;
+  color: var(--accent);
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+/* ── Responsive ──────────────────────────────────────────────────────────── */
+@media (max-width: 600px) {
+  .dv-agents {
+    grid-template-columns: 1fr;
+  }
+  .dv-agent-card:first-child {
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+}

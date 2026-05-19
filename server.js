@@ -7,7 +7,8 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const { fetchTimeSeries, fetchPrice, toTDSymbol, getDemoPrice, WS_URL } = require('./src/twelvedata');
-const { streamAI } = require('./src/ai-providers');
+const { streamAI, sseToken, sseDone, sseError }                        = require('./src/ai-providers');
+const { dualValidate, buildMediatorPrompt }                             = require('./src/dual-validator');
 
 const app = express();
 const server = http.createServer(app);
@@ -51,6 +52,64 @@ app.get('/api/price', async (req, res) => {
     console.error('[/api/price]', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// ─── REST: Dual-KI Quality Gate ──────────────────────────────────────────────
+app.post('/api/dual-validate', async (req, res) => {
+  const { symbol, analysis, trade, capital } = req.body;
+  if (!symbol || !analysis || !trade) {
+    return res.status(400).json({ error: 'Fehlende Parameter' });
+  }
+
+  const apiKeys = {
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    openai:    process.env.OPENAI_API_KEY,
+  };
+
+  try {
+    const result = await dualValidate({ symbol, analysis, trade, apiKeys });
+    res.json(result);
+  } catch (err) {
+    console.error('[/api/dual-validate]', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── REST: Mediator Agent (SSE streaming) ────────────────────────────────────
+app.post('/api/mediator', async (req, res) => {
+  const { symbol, analysis, trade, capital, agentA, agentB } = req.body;
+  if (!symbol || !analysis || !trade || !agentA || !agentB) {
+    return res.status(400).json({ error: 'Fehlende Parameter' });
+  }
+
+  res.setHeader('Content-Type',  'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection',    'keep-alive');
+  res.flushHeaders();
+
+  const prompt  = buildMediatorPrompt(symbol, analysis, trade, capital, agentA, agentB);
+  const apiKeys = {
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    openai:    process.env.OPENAI_API_KEY,
+  };
+
+  try {
+    // Prefer Claude for mediator; fall back to OpenAI
+    if (apiKeys.anthropic && !apiKeys.anthropic.startsWith('your_')) {
+      await streamAI({ provider: 'anthropic', symbol, candles: [], analysis, trade, capital, apiKeys, res,
+                       _customPrompt: prompt });
+    } else if (apiKeys.openai && !apiKeys.openai.startsWith('your_')) {
+      await streamAI({ provider: 'openai', symbol, candles: [], analysis, trade, capital, apiKeys, res,
+                       _customPrompt: prompt });
+    } else {
+      sseError(res, 'Kein Mediator-API-Key konfiguriert');
+    }
+  } catch (err) {
+    sseError(res, err.message);
+  }
+
+  sseDone(res);
+  res.end();
 });
 
 // ─── REST: AI Analyze (SSE streaming) ────────────────────────────────────────

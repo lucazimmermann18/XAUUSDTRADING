@@ -39,11 +39,10 @@ const JournalStore = (() => {
    * @param {object} result - from ICTAnalyzer.analyze()
    * @returns {string} trade id
    */
-  function add(result) {
-    const trades = load();
+  function buildEntry(result, status, gateMeta) {
     const { symbol, capital, trade, structure, liquidity, fvg, premDisc } = result;
-
-    const entry = {
+    const g = gateMeta || {};
+    return {
       id:         genId(),
       createdAt:  Date.now(),
       symbol,
@@ -64,14 +63,43 @@ const JournalStore = (() => {
         fvg:       fvg?.label       || '',
         premDisc:  premDisc?.label  || '',
       },
-      status:     'open',   // open | win | loss | breakeven
+      // Quality gate
+      qualityGate:         g.qualityGate         || 'skipped',
+      agentA:              g.agentA              || null,
+      agentB:              g.agentB              || null,
+      mediatorConfidence:  g.mediatorConfidence  || null,
+      mediatorNarrative:   g.mediatorNarrative   || '',
+      rejectionReason:     g.rejectionReason     || '',
+      // Outcome
+      status,
       exitPrice:  null,
       actualPnl:  null,
       closedAt:   null,
       notes:      '',
     };
+  }
 
-    trades.unshift(entry); // newest first
+  /**
+   * Add a validated (gate-passed) trade — status: 'open'
+   * @param {object} result   - from ICTAnalyzer.analyze()
+   * @param {object} gateMeta - { qualityGate, agentA, agentB, mediatorConfidence, mediatorNarrative }
+   */
+  function add(result, gateMeta) {
+    const trades = load();
+    const entry  = buildEntry(result, 'open', gateMeta);
+    trades.unshift(entry);
+    save(trades);
+    return entry.id;
+  }
+
+  /**
+   * Add a rejected trade (gate failed) — status: 'rejected'
+   * Saved for learning purposes; not monitored by TradeMonitor.
+   */
+  function addRejected(result, gateMeta) {
+    const trades = load();
+    const entry  = buildEntry(result, 'rejected', { ...gateMeta, qualityGate: 'rejected' });
+    trades.unshift(entry);
     save(trades);
     return entry.id;
   }
@@ -140,17 +168,18 @@ const JournalStore = (() => {
   // ── Statistics ────────────────────────────────────────────────────────────
 
   function getStats() {
-    const trades  = load();
-    const closed  = trades.filter(t => t.status !== 'open');
-    const wins    = trades.filter(t => t.status === 'win');
-    const losses  = trades.filter(t => t.status === 'loss');
-
+    const trades    = load();
+    const active    = trades.filter(t => t.status !== 'rejected'); // exclude rejected from P&L stats
+    const closed    = active.filter(t => t.status !== 'open');
+    const wins        = active.filter(t => t.status === 'win');
+    const losses      = active.filter(t => t.status === 'loss');
+    const rejected    = trades.filter(t => t.status === 'rejected');
     const winRate     = closed.length > 0 ? (wins.length / closed.length) * 100 : 0;
     const grossWin    = wins.reduce((s, t)   => s + (t.actualPnl || 0), 0);
     const grossLoss   = losses.reduce((s, t) => s + Math.abs(t.actualPnl || 0), 0);
     const profitFactor= grossLoss > 0 ? grossWin / grossLoss : wins.length > 0 ? Infinity : 0;
     const netPnl      = closed.reduce((s, t) => s + (t.actualPnl || 0), 0);
-    const avgRR       = trades.length > 0 ? trades.reduce((s, t) => s + t.rr, 0) / trades.length : 0;
+    const avgRR       = active.length > 0 ? active.reduce((s, t) => s + t.rr, 0) / active.length : 0;
 
     // Best instrument by wins
     const bySymbol = {};
@@ -176,7 +205,8 @@ const JournalStore = (() => {
       closed:       closed.length,
       wins:         wins.length,
       losses:       losses.length,
-      breakevens:   trades.filter(t => t.status === 'breakeven').length,
+      breakevens:   active.filter(t => t.status === 'breakeven').length,
+      rejected:     rejected.length,
       winRate:      parseFloat(winRate.toFixed(1)),
       grossWin:     parseFloat(grossWin.toFixed(2)),
       grossLoss:    parseFloat(grossLoss.toFixed(2)),
@@ -188,5 +218,5 @@ const JournalStore = (() => {
     };
   }
 
-  return { getAll, getById, add, update, closeTrade, remove, clear, getStats };
+  return { getAll, getById, add, addRejected, update, closeTrade, remove, clear, getStats };
 })();

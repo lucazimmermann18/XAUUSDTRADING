@@ -36,8 +36,15 @@
       win:        '<span class="j-badge win">Win ✓</span>',
       loss:       '<span class="j-badge loss">Loss ✗</span>',
       breakeven:  '<span class="j-badge be">BE ≈</span>',
+      rejected:   '<span class="j-badge rejected">Abgelehnt ✗</span>',
     };
     return map[status] || status;
+  }
+
+  function gateBadge(t) {
+    if (t.qualityGate === 'passed')   return '<span class="j-gate passed" title="Dual-KI bestätigt">✅ KI</span>';
+    if (t.qualityGate === 'rejected') return '<span class="j-gate rejected" title="Dual-KI abgelehnt">❌ KI</span>';
+    return '<span class="j-gate skipped" title="Ohne KI-Gate">—</span>';
   }
 
   function dirBadge(dir) {
@@ -187,9 +194,11 @@
              <button class="j-close-btn loss" data-id="${t.id}" data-status="loss">Loss</button>
              <button class="j-close-btn be"   data-id="${t.id}" data-status="breakeven">BE</button>
            </div>`
-        : `<div class="j-actions">
-             <button class="j-reopen-btn" data-id="${t.id}">↺</button>
-           </div>`;
+        : t.status === 'rejected'
+          ? ''
+          : `<div class="j-actions">
+               <button class="j-reopen-btn" data-id="${t.id}">↺</button>
+             </div>`;
 
       return `
         <tr class="j-row ${t.status}" data-id="${t.id}">
@@ -201,6 +210,7 @@
           <td class="j-cell mono tp">${t.tp}</td>
           <td class="j-cell mono">${fmt(t.rr)}</td>
           <td class="j-cell mono">${fmt(t.lot)}</td>
+          <td class="j-cell">${gateBadge(t)}</td>
           <td class="j-cell">${statusBadge(t.status)}</td>
           <td class="j-cell mono ${pnlClass(t.actualPnl)}">${pnlVal}</td>
           <td class="j-cell actions">${actions}</td>

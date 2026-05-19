@@ -539,3 +539,27 @@
   color: var(--accent);
   font-weight: 700;
 }
+
+/* ── Quality Gate Badge ──────────────────────────────────────────────────── */
+.j-badge.rejected {
+  background: rgba(148,163,184,0.1);
+  color: var(--bear);
+}
+
+.j-filter-btn.rejected.active {
+  background: rgba(239,68,68,0.1);
+  border-color: var(--bear);
+  color: var(--bear);
+}
+
+.j-gate {
+  font-size: 11px;
+  font-weight: 700;
+  cursor: default;
+}
+
+.j-gate.passed  { color: var(--bull); }
+.j-gate.rejected { color: var(--bear); }
+.j-gate.skipped { color: var(--text-muted); }
+
+.j-row.rejected { opacity: 0.65; }
