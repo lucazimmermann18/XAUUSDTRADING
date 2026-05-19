@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ICT Sniper · XAUUSD &amp; BTC</title>
+  <title>ICT Sniper · 17 Märkte</title>
 
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
@@ -24,13 +24,8 @@
       <span class="logo-text">ICT <span class="logo-accent">SNIPER</span></span>
     </div>
 
-    <div class="topbar__instruments">
-      <button class="inst-btn active" data-symbol="XAUUSD" id="btn-gold">
-        <span class="inst-icon">Au</span> GOLD
-      </button>
-      <button class="inst-btn" data-symbol="BTCUSD" id="btn-btc">
-        <span class="inst-icon">₿</span> BTC
-      </button>
+    <div class="topbar__instruments" id="inst-categories">
+      <!-- Category tabs rendered by app.js -->
     </div>
 
     <div class="topbar__price">
@@ -39,6 +34,11 @@
       <span class="current-price" id="current-price">–</span>
     </div>
   </header>
+
+  <!-- ─── Instrument Chips Bar ──────────────────────────────────────────────── -->
+  <div class="inst-chips-bar" id="inst-chips-bar">
+    <!-- Instrument chips rendered by app.js -->
+  </div>
 
   <!-- ─── Main Content ─────────────────────────────────────────────────────── -->
   <main class="main">
@@ -93,6 +93,7 @@
   </main>
 
   <!-- ─── Scripts ──────────────────────────────────────────────────────────── -->
+  <script src="/js/instruments.js"></script>
   <script src="/js/websocket-client.js"></script>
   <script src="/js/ict-analyzer.js"></script>
   <script src="/js/trade-card.js"></script>

@@ -104,12 +104,95 @@ body {
   color: var(--accent);
 }
 
+/* ── Instrument Category Tabs (in topbar) ──────────────────────────────────── */
 .topbar__instruments {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   margin-left: 8px;
 }
 
+.inst-cat-btn {
+  padding: 5px 12px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 40px;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.inst-cat-btn:hover {
+  border-color: rgba(148,163,184,0.3);
+  color: var(--text-secondary);
+}
+
+.inst-cat-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+/* ── Instrument Chips Bar (below topbar) ───────────────────────────────────── */
+.inst-chips-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 24px;
+  background: rgba(11, 17, 32, 0.9);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto;
+  scrollbar-width: none;
+  backdrop-filter: blur(8px);
+}
+
+.inst-chips-bar::-webkit-scrollbar { display: none; }
+
+.inst-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 13px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 40px;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.18s ease;
+  flex-shrink: 0;
+}
+
+.inst-chip:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--text-secondary);
+  border-color: rgba(148,163,184,0.2);
+}
+
+.inst-chip.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 0 10px var(--accent-glow);
+}
+
+.inst-chip__icon {
+  font-size: 10px;
+  font-weight: 800;
+  opacity: 0.7;
+}
+
+/* Legacy .inst-btn kept for compatibility */
 .inst-btn {
   display: flex;
   align-items: center;
@@ -125,19 +208,6 @@ body {
   letter-spacing: 0.5px;
   cursor: pointer;
   transition: all 0.2s ease;
-}
-
-.inst-btn:hover {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-dim);
-}
-
-.inst-btn.active {
-  background: var(--accent-dim);
-  border-color: var(--accent);
-  color: var(--accent);
-  box-shadow: 0 0 12px var(--accent-glow);
 }
 
 .inst-icon {

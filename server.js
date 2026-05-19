@@ -57,18 +57,35 @@ let demoTickInterval = null;
 const demoPrices = {}; // symbol -> current simulated price
 
 // Simulate realistic price movement for demo mode
+const DEMO_BASES_SERVER = {
+  EURUSD: 1.08450, GBPUSD: 1.27320, USDJPY: 149.650, GBPJPY: 190.420,
+  AUDUSD: 0.65180, USDCHF: 0.89750,
+  US500: 5280.50, NAS100: 18420.00, US30: 39150.00, GER40: 18320.00,
+  XAUUSD: 3241.50, XAGUSD: 32.450, USOIL: 78.35, XCUUSD: 4.4250,
+  BTCUSD: 67850.00, ETHUSD: 3480.00, SOLUSD: 172.50,
+};
+
+const DEMO_VOL_PCT = {
+  BTCUSD: 0.0003, ETHUSD: 0.0004, SOLUSD: 0.0005,
+  US500: 0.00006, NAS100: 0.00008, US30: 0.00005, GER40: 0.00007,
+  XAUUSD: 0.00008, XAGUSD: 0.00012, USOIL: 0.00012, XCUUSD: 0.00012,
+};
+
 function initDemoPrice(symbol) {
-  const bases = { XAUUSD: 3241.50, BTCUSD: 67850.00 };
   if (!demoPrices[symbol]) {
-    demoPrices[symbol] = bases[symbol] || 3241.50;
+    demoPrices[symbol] = DEMO_BASES_SERVER[symbol] || 1.0;
   }
 }
 
 function tickDemoPrice(symbol) {
   initDemoPrice(symbol);
   const base = demoPrices[symbol];
-  const vol = symbol === 'BTCUSD' ? base * 0.0003 : base * 0.00008;
-  demoPrices[symbol] = parseFloat((base + (Math.random() - 0.5) * 2 * vol).toFixed(2));
+  const volPct = DEMO_VOL_PCT[symbol] || 0.00003; // forex default
+  const vol = base * volPct;
+  const dec = ['EURUSD','GBPUSD','AUDUSD','USDCHF'].includes(symbol) ? 5
+            : ['USDJPY','GBPJPY'].includes(symbol) ? 3
+            : ['XAGUSD','XCUUSD'].includes(symbol) ? 4 : 2;
+  demoPrices[symbol] = parseFloat((base + (Math.random() - 0.5) * 2 * vol).toFixed(dec));
   return demoPrices[symbol];
 }
 

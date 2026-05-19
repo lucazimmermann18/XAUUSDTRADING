@@ -1,6 +1,6 @@
 /**
  * ict-analyzer.js
- * ICT (Inner Circle Trader) analysis engine for XAUUSD / BTCUSD M1 charts.
+ * ICT (Inner Circle Trader) analysis engine for all 17 supported instruments.
  * Analyzes 200 M1 candles and produces trade signals with full context.
  */
 
@@ -300,8 +300,9 @@ const ICTAnalyzer = (() => {
 
     let direction = isBullish ? 'long' : isBearish ? 'short' : (structure.trend === 'bullish' ? 'long' : 'short');
 
-    // Buffer sizes
-    const slBuffer = symbol === 'XAUUSD' ? 0.50 : 50;
+    // Buffer sizes from instrument config
+    const cfg = (typeof INSTRUMENTS !== 'undefined' && INSTRUMENTS[symbol]) || { slBuffer: 0.5, contractSize: 100 };
+    const slBuffer = cfg.slBuffer;
 
     let sl, tp;
 
@@ -357,8 +358,8 @@ const ICTAnalyzer = (() => {
     const rr     = reward / risk;
 
     // Lot sizing
-    const contractSize = symbol === 'XAUUSD' ? 100 : 1;
-    const lot = Math.round((capital * 0.10) / (risk * contractSize) * 100) / 100;
+    const contractSize = cfg.contractSize;
+    const lot = Math.max(0.01, Math.round((capital * 0.10) / (risk * contractSize) * 100) / 100);
 
     // P&L
     const tpPnl = lot * reward * contractSize;

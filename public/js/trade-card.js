@@ -15,11 +15,12 @@ const TradeCard = (() => {
     return n.toLocaleString('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   }
 
-  /** Format price (keep dot as decimal): 3241.50 */
+  /** Format price using instrument-specific decimals */
   function fmtPrice(n, symbol) {
     if (n === null || n === undefined) return '–';
-    if (symbol === 'BTCUSD' || (n > 10000)) return n.toFixed(2);
-    return n.toFixed(2);
+    const cfg = (typeof INSTRUMENTS !== 'undefined' && INSTRUMENTS[symbol]);
+    const dec = cfg ? cfg.decimals : 2;
+    return n.toFixed(dec);
   }
 
   /** Format lot size */
@@ -214,8 +215,9 @@ const TradeCard = (() => {
     const { direction, entry, sl, tp, rr, lot, tpPnl, slPnl, riskPct, rewardPct } = trade;
 
     const isLong = direction === 'long';
-    const displaySymbol = symbol === 'XAUUSD' ? 'XAUUSD' : 'BTCUSD';
-    const tagSymbol     = symbol === 'XAUUSD' ? 'GOLD · M1' : 'BTC · M1';
+    const cfg           = (typeof INSTRUMENTS !== 'undefined' && INSTRUMENTS[symbol]) || {};
+    const displaySymbol = symbol;
+    const tagSymbol     = cfg.tag || (symbol + ' · M1');
 
     const dirClass   = isLong ? 'long'  : 'short';
     const dirLabel   = isLong ? '↑ Long' : '↓ Short';

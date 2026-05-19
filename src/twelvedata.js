@@ -10,8 +10,27 @@ const WS_URL = 'wss://ws.twelvedata.com/v1/quotes/price';
  */
 function toTDSymbol(symbol) {
   const map = {
+    // Forex
+    'EURUSD': 'EUR/USD',
+    'GBPUSD': 'GBP/USD',
+    'USDJPY': 'USD/JPY',
+    'GBPJPY': 'GBP/JPY',
+    'AUDUSD': 'AUD/USD',
+    'USDCHF': 'USD/CHF',
+    // Indizes
+    'US500':  'SPX',
+    'NAS100': 'NDX',
+    'US30':   'DJI',
+    'GER40':  'GER40',
+    // Rohstoffe
     'XAUUSD': 'XAU/USD',
+    'XAGUSD': 'XAG/USD',
+    'USOIL':  'WTI/USD',
+    'XCUUSD': 'COPPER',
+    // Krypto
     'BTCUSD': 'BTC/USD',
+    'ETHUSD': 'ETH/USD',
+    'SOLUSD': 'SOL/USD',
   };
   return map[symbol.toUpperCase()] || symbol;
 }
@@ -121,8 +140,27 @@ async function fetchPrice(symbol, apiKey) {
 // ─── Demo Data Generator ─────────────────────────────────────────────────────
 
 const DEMO_BASES = {
+  // Forex
+  EURUSD: 1.08450,
+  GBPUSD: 1.27320,
+  USDJPY: 149.650,
+  GBPJPY: 190.420,
+  AUDUSD: 0.65180,
+  USDCHF: 0.89750,
+  // Indizes
+  US500:  5280.50,
+  NAS100: 18420.00,
+  US30:   39150.00,
+  GER40:  18320.00,
+  // Rohstoffe
   XAUUSD: 3241.50,
+  XAGUSD: 32.450,
+  USOIL:  78.35,
+  XCUUSD: 4.4250,
+  // Krypto
   BTCUSD: 67850.00,
+  ETHUSD: 3480.00,
+  SOLUSD: 172.50,
 };
 
 function getDemoPrice(symbol) {
@@ -137,10 +175,13 @@ function getDemoPrice(symbol) {
 function generateDemoCandles(symbol, count = 200) {
   const base = DEMO_BASES[symbol.toUpperCase()] || 3241.50;
 
-  // Volatility per minute (approx)
-  const volPerMin = symbol === 'BTCUSD'
-    ? base * 0.0008   // ~0.08% per minute for BTC
-    : base * 0.0002;  // ~0.02% per minute for XAUUSD
+  // Volatility per minute — crypto > indices > commodities > forex
+  const volPct = {
+    BTCUSD: 0.0008, ETHUSD: 0.0009, SOLUSD: 0.0012,
+    US500: 0.00015, NAS100: 0.00020, US30: 0.00012, GER40: 0.00018,
+    XAUUSD: 0.0002, XAGUSD: 0.0003, USOIL: 0.0003, XCUUSD: 0.0003,
+  }[symbol.toUpperCase()] || 0.00008; // forex default ~0.008%
+  const volPerMin = base * volPct;
 
   const now = Math.floor(Date.now() / 1000);
   // Start `count` minutes ago, aligned to minute boundary
@@ -176,12 +217,16 @@ function generateDemoCandles(symbol, count = 200) {
       trend = (Math.random() - 0.5) * 0.4;
     }
 
+    const dec = ['EURUSD','GBPUSD','AUDUSD','USDCHF'].includes(symbol) ? 5
+              : ['USDJPY','GBPJPY'].includes(symbol) ? 3
+              : ['XAGUSD','XCUUSD'].includes(symbol) ? 4
+              : 2;
     candles.push({
       time,
-      open:  parseFloat(open.toFixed(symbol === 'BTCUSD' ? 2 : 2)),
-      high:  parseFloat(high.toFixed(2)),
-      low:   parseFloat(low.toFixed(2)),
-      close: parseFloat(close.toFixed(2)),
+      open:  parseFloat(open.toFixed(dec)),
+      high:  parseFloat(high.toFixed(dec)),
+      low:   parseFloat(low.toFixed(dec)),
+      close: parseFloat(close.toFixed(dec)),
     });
   }
 
