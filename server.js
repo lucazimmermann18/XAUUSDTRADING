@@ -7,6 +7,7 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const { fetchTimeSeries, fetchPrice, toTDSymbol, getDemoPrice, WS_URL } = require('./src/twelvedata');
+const { streamAI } = require('./src/ai-providers');
 
 const app = express();
 const server = http.createServer(app);
@@ -44,6 +45,25 @@ app.get('/api/price', async (req, res) => {
     console.error('[/api/price]', err.message);
     res.status(500).json({ success: false, error: err.message });
   }
+});
+
+// ─── REST: AI Analyze (SSE streaming) ────────────────────────────────────────
+app.post('/api/ai-analyze', async (req, res) => {
+  const { provider, symbol, candles, analysis, trade, capital } = req.body;
+
+  if (!provider || !symbol || !candles || !analysis || !trade) {
+    return res.status(400).json({ error: 'Fehlende Parameter' });
+  }
+
+  const apiKeys = {
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    openai:    process.env.OPENAI_API_KEY,
+    deepseek:  process.env.DEEPSEEK_API_KEY,
+    gemini:    process.env.GEMINI_API_KEY,
+  };
+
+  // streamAI sets SSE headers and writes to res directly
+  await streamAI({ provider, symbol, candles, analysis, trade, capital, apiKeys, res });
 });
 
 // ─── WebSocket relay ─────────────────────────────────────────────────────────

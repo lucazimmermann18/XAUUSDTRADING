@@ -835,6 +835,198 @@ body {
   color: var(--bear);
 }
 
+/* ── AI Commentary Panel ─────────────────────────────────────────────────── */
+.ai-panel {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+
+.ai-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.ai-panel__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-primary);
+  letter-spacing: 0.3px;
+  flex-shrink: 0;
+}
+
+.ai-panel__icon {
+  font-size: 16px;
+}
+
+.ai-provider-chips {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  flex: 1;
+}
+
+.ai-provider-chip {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 40px;
+  color: var(--text-muted);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  white-space: nowrap;
+}
+
+.ai-provider-chip:hover {
+  background: rgba(255,255,255,0.07);
+  color: var(--text-secondary);
+}
+
+.ai-provider-chip.active {
+  background: color-mix(in srgb, var(--chip-color, #888) 15%, transparent);
+  border-color: var(--chip-color, #888);
+  color: var(--chip-color, #888);
+  box-shadow: 0 0 10px color-mix(in srgb, var(--chip-color, #888) 30%, transparent);
+}
+
+.ai-chip-icon {
+  font-size: 11px;
+}
+
+.ai-chip-model {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  opacity: 0.6;
+  letter-spacing: 0;
+}
+
+.ai-ask-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 18px;
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: 40px;
+  color: var(--accent);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+  letter-spacing: 0.3px;
+}
+
+.ai-ask-btn:hover {
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 0 16px var(--accent-glow);
+}
+
+.ai-ask-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ai-ask-icon { font-size: 13px; }
+
+/* ── AI Output Area ──────────────────────────────────────────────────────── */
+.ai-output {
+  padding: 20px 24px;
+  min-height: 80px;
+}
+
+.ai-placeholder {
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+  padding: 12px 0;
+}
+
+.ai-streaming {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ai-provider-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 10px;
+  background: color-mix(in srgb, var(--badge-color, #888) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--badge-color, #888) 35%, transparent);
+  border-radius: 20px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--badge-color, #888);
+  letter-spacing: 0.5px;
+  width: fit-content;
+}
+
+.ai-text {
+  font-size: 14px;
+  line-height: 1.75;
+  color: var(--text-secondary);
+}
+
+.ai-text p { margin: 0 0 10px; }
+.ai-text p:last-child { margin-bottom: 0; }
+
+.ai-text strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.ai-heading {
+  display: block;
+  color: var(--text-primary);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.3px;
+  margin-bottom: 4px;
+}
+
+.ai-bull { color: var(--bull); font-weight: 700; }
+.ai-bear { color: var(--bear); font-weight: 700; }
+.ai-warn { color: var(--gold); font-weight: 700; }
+
+.ai-cursor {
+  display: inline-block;
+  color: var(--accent);
+  animation: blink 1s step-end infinite;
+  margin-left: 1px;
+  font-size: 13px;
+}
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
+}
+
+.ai-error {
+  font-size: 13px;
+  color: var(--text-secondary);
+  padding: 8px 0;
+}
+
 /* ── Entry Point Animation ───────────────────────────────────────────────── */
 @keyframes pulse-entry {
   0%   { r: 5; opacity: 1; }

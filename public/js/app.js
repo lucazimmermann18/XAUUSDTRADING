@@ -3,16 +3,17 @@
 (async function () {
 
   // ── DOM References ────────────────────────────────────────────────────────
-  const analyseBtn      = document.getElementById('analyse-btn');
-  const capitalInput    = document.getElementById('capital-input');
-  const statusBadge     = document.getElementById('status-badge');
-  const statusText      = document.getElementById('status-text');
-  const chartLoading    = document.getElementById('chart-loading');
-  const cardOutput      = document.getElementById('card-output');
-  const currentPriceEl  = document.getElementById('current-price');
-  const liveDot         = document.getElementById('live-dot');
-  const categoriesEl    = document.getElementById('inst-categories');
-  const chipsBarEl      = document.getElementById('inst-chips-bar');
+  const analyseBtn       = document.getElementById('analyse-btn');
+  const capitalInput     = document.getElementById('capital-input');
+  const statusBadge      = document.getElementById('status-badge');
+  const statusText       = document.getElementById('status-text');
+  const chartLoading     = document.getElementById('chart-loading');
+  const cardOutput       = document.getElementById('card-output');
+  const currentPriceEl   = document.getElementById('current-price');
+  const liveDot          = document.getElementById('live-dot');
+  const categoriesEl     = document.getElementById('inst-categories');
+  const chipsBarEl       = document.getElementById('inst-chips-bar');
+  const aiPanelContainer = document.getElementById('ai-panel-container');
 
   // ── State ─────────────────────────────────────────────────────────────────
   let currentSymbol    = 'XAUUSD';
@@ -150,11 +151,12 @@
     // Apply instrument accent color
     applyAccent(symbol);
 
-    // Reset analysis card
+    // Reset analysis card and AI panel
     cardOutput.innerHTML = `<div class="card-placeholder">
       <div class="placeholder-icon">◈</div>
       <p>Klicke auf <strong>Analysieren</strong> um eine ICT-Analyse zu starten</p>
     </div>`;
+    aiPanelContainer.innerHTML = '';
 
     // Reset price display
     currentPriceEl.textContent = '–';
@@ -213,6 +215,12 @@
       ChartManager.drawLevelLines(result.trade);
       const cardHTML = TradeCard.render(result);
       cardOutput.innerHTML = cardHTML;
+
+      // Inject AI commentary panel below trade card
+      aiPanelContainer.innerHTML = AICommentator.renderPanel();
+      AICommentator.setAnalysisResult(result);
+      AICommentator.bindEvents();
+
       cardOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 
       const dir = result.trade.direction === 'long' ? '↑ Long' : '↓ Short';
