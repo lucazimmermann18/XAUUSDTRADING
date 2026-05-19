@@ -20,6 +20,11 @@ const PORT = process.env.PORT || 3000;
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+// ─── Page Routes ─────────────────────────────────────────────────────────────
+app.get('/journal', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'journal.html'));
+});
+
 // ─── REST: Candles ───────────────────────────────────────────────────────────
 app.get('/api/candles', async (req, res) => {
   try {

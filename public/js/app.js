@@ -216,6 +216,10 @@
       const cardHTML = TradeCard.render(result);
       cardOutput.innerHTML = cardHTML;
 
+      // Auto-save to journal
+      const tradeId = JournalStore.add(result);
+      showJournalToast(tradeId);
+
       // Inject AI commentary panel below trade card
       aiPanelContainer.innerHTML = AICommentator.renderPanel();
       AICommentator.setAnalysisResult(result);
@@ -248,6 +252,30 @@
       analyseBtn.click();
     }
   });
+
+  // ── Journal Toast ─────────────────────────────────────────────────────────
+  function showJournalToast(tradeId) {
+    const existing = document.getElementById('journal-toast');
+    if (existing) existing.remove();
+
+    const toast = document.createElement('div');
+    toast.id = 'journal-toast';
+    toast.className = 'journal-toast';
+    toast.innerHTML = `
+      <span>✓ Trade gespeichert</span>
+      <a href="/journal" class="toast-link">Journal →</a>
+    `;
+    document.body.appendChild(toast);
+
+    // Animate in
+    requestAnimationFrame(() => toast.classList.add('visible'));
+
+    // Auto-dismiss
+    setTimeout(() => {
+      toast.classList.remove('visible');
+      setTimeout(() => toast.remove(), 400);
+    }, 4000);
+  }
 
   // ── Bootstrap ─────────────────────────────────────────────────────────────
   ChartManager.init('chart-container');

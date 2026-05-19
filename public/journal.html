@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ICT Sniper · Trade Journal</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+
+  <link rel="stylesheet" href="/css/styles.css" />
+  <link rel="stylesheet" href="/css/journal.css" />
+</head>
+<body>
+
+  <!-- ─── Topbar ─────────────────────────────────────────────────────────── -->
+  <header class="topbar">
+    <div class="topbar__logo">
+      <span class="logo-icon">◈</span>
+      <span class="logo-text">ICT <span class="logo-accent">SNIPER</span></span>
+    </div>
+    <span class="journal-page-title">Trade Journal</span>
+    <div style="margin-left:auto;display:flex;gap:10px;align-items:center;">
+      <button class="j-btn-ghost" id="clear-btn">Alle löschen</button>
+      <a href="/" class="j-btn-accent">← Zurück zum Chart</a>
+    </div>
+  </header>
+
+  <main class="j-main">
+
+    <!-- ─── Stats Row ───────────────────────────────────────────────────── -->
+    <div class="stats-row" id="stats-row">
+      <!-- filled by journal-page.js -->
+    </div>
+
+    <!-- ─── Equity Curve ────────────────────────────────────────────────── -->
+    <div class="j-card">
+      <div class="j-card__title">Equity-Kurve</div>
+      <div id="equity-chart"></div>
+    </div>
+
+    <!-- ─── Trade Table ─────────────────────────────────────────────────── -->
+    <div class="j-card">
+      <div class="j-card__header">
+        <div class="j-card__title">
+          Trades
+          <span class="j-trade-count" id="trade-count"></span>
+        </div>
+        <div class="j-filter-tabs">
+          <button class="j-filter-btn active" data-status="all">Alle</button>
+          <button class="j-filter-btn" data-status="open">Offen</button>
+          <button class="j-filter-btn" data-status="win">Win</button>
+          <button class="j-filter-btn" data-status="loss">Loss</button>
+          <button class="j-filter-btn" data-status="breakeven">BE</button>
+        </div>
+      </div>
+
+      <div class="j-table-wrap">
+        <table class="j-table">
+          <thead>
+            <tr>
+              <th data-sort="createdAt" class="sort-desc">Datum</th>
+              <th data-sort="symbol">Symbol</th>
+              <th>Richtung</th>
+              <th data-sort="entry">Entry</th>
+              <th>SL</th>
+              <th>TP</th>
+              <th data-sort="rr">RR</th>
+              <th data-sort="lot">Lot</th>
+              <th data-sort="status">Status</th>
+              <th data-sort="actualPnl">P&L</th>
+              <th>Aktion</th>
+            </tr>
+          </thead>
+          <tbody id="journal-tbody">
+            <tr><td colspan="11" class="j-empty">Noch keine Trades — analysiere ein Instrument im Chart</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ─── Close Trade Modal ───────────────────────────────────────────────── -->
+  <div class="modal" id="close-modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box">
+      <div class="modal-header">
+        <span class="modal-title">Trade schließen</span>
+        <button class="modal-close">✕</button>
+      </div>
+      <form class="modal-body" id="close-form">
+        <input type="hidden" name="status" value="win" />
+
+        <div class="form-group">
+          <label class="form-label">Ergebnis</label>
+          <div class="status-toggles">
+            <button type="button" class="status-toggle win active"  data-val="win">✓ Win</button>
+            <button type="button" class="status-toggle loss"        data-val="loss">✗ Loss</button>
+            <button type="button" class="status-toggle be"          data-val="breakeven">≈ Break Even</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="exit-price-input">Exit-Preis (optional)</label>
+          <input type="number" name="exit-price" id="exit-price-input"
+                 class="form-input" step="any" placeholder="Automatisch aus Status" />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="notes-input">Notizen</label>
+          <textarea name="notes" id="notes-input" class="form-textarea"
+                    rows="3" placeholder="Was war der Grund? Was hättest du anders gemacht?"></textarea>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="modal-close j-btn-ghost">Abbrechen</button>
+          <button type="submit" class="j-btn-accent">Speichern</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ─── Detail Modal ────────────────────────────────────────────────────── -->
+  <div class="modal" id="detail-modal">
+    <div class="modal-backdrop"></div>
+    <div class="modal-box modal-box--wide">
+      <div class="modal-header">
+        <span class="modal-title">Trade-Detail</span>
+        <button class="modal-close">✕</button>
+      </div>
+      <div class="modal-body" id="detail-content">
+        <!-- filled dynamically -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/instruments.js"></script>
+  <script src="/js/journal-store.js"></script>
+  <script src="/js/journal-page.js"></script>
+</body>
+</html>
