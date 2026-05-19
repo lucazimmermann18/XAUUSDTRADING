@@ -115,8 +115,8 @@ async function analyseInstrument(inst, capital) {
     }
 
     const { structure, liquidity, fvg, premDisc, trade } = visionResult;
-    if (!trade?.direction || !trade?.entry || !trade?.sl || !trade?.tp) {
-      console.log(`[Scheduler] ${symbol}: kein vollständiges Trade-Setup`);
+    if (visionResult.decision === 'NO_TRADE' || !trade?.direction || !trade?.entry || !trade?.sl || !trade?.tp) {
+      console.log(`[Scheduler] ${symbol}: kein Trade-Setup (${visionResult.decision || 'unvollständig'}, Score: ${visionResult.setup_score || '?'}/16)`);
       return;
     }
 

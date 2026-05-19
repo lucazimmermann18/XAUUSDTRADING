@@ -7,8 +7,8 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const { fetchTimeSeries, fetchTimeSeriesCached, fetchPrice, toTDSymbol, isSymbolLive, WS_URL } = require('./src/twelvedata');
-const { streamAI, callClaudeVision, sseToken, sseDone, sseError }      = require('./src/ai-providers');
-const { dualValidate, buildMediatorPrompt }                             = require('./src/dual-validator');
+const { streamAI, callClaudeVision, callOpenAIAnalysis, sseToken, sseDone, sseError } = require('./src/ai-providers');
+const { dualValidate, buildMediatorPrompt, buildMediatorWatchZonePrompt }            = require('./src/dual-validator');
 const scheduler                                                         = require('./src/scheduler');
 
 const app = express();
@@ -193,6 +193,45 @@ app.post('/api/dual-validate', async (req, res) => {
   }
 });
 
+// ─── REST: Dual Analyze — Claude + OpenAI independent full ICT analysis ────────
+app.post('/api/dual-analyze', async (req, res) => {
+  const { image, symbol, capital, currentPrice, candles } = req.body;
+
+  if (!symbol || !capital) {
+    return res.status(400).json({ success: false, error: 'Fehlende Parameter: symbol, capital' });
+  }
+
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openaiKey    = process.env.OPENAI_API_KEY;
+
+  const [claudeResult, openaiResult] = await Promise.allSettled([
+    (anthropicKey && !anthropicKey.startsWith('your_'))
+      ? callClaudeVision({ image, symbol, capital, currentPrice, candles, apiKey: anthropicKey })
+      : Promise.reject(new Error('Anthropic API-Key nicht konfiguriert')),
+
+    (openaiKey && !openaiKey.startsWith('your_'))
+      ? callOpenAIAnalysis({ image, symbol, capital, currentPrice, candles, apiKey: openaiKey })
+      : Promise.reject(new Error('OpenAI API-Key nicht konfiguriert')),
+  ]);
+
+  const agentA = claudeResult.status === 'fulfilled'
+    ? { ...claudeResult.value, label: 'Claude', ok: true }
+    : { decision: 'ERROR', label: 'Claude', ok: false, error: claudeResult.reason?.message || 'Fehler' };
+
+  const agentB = openaiResult.status === 'fulfilled'
+    ? { ...openaiResult.value, label: 'GPT-4o', ok: true }
+    : { decision: 'ERROR', label: 'GPT-4o', ok: false, error: openaiResult.reason?.message || 'Fehler' };
+
+  const agreement =
+    agentA.decision === 'TRADE' &&
+    agentB.decision === 'TRADE' &&
+    (agentA.trade?.direction || '').toLowerCase() === (agentB.trade?.direction || '').toLowerCase();
+
+  console.log(`[/api/dual-analyze] ${symbol} — Claude: ${agentA.decision}, GPT-4o: ${agentB.decision}, Agreement: ${agreement}`);
+
+  res.json({ success: true, agentA, agentB, agreement, symbol, capital });
+});
+
 // ─── REST: Mediator Agent (SSE streaming) ────────────────────────────────────
 app.post('/api/mediator', async (req, res) => {
   const { symbol, analysis, trade, capital, agentA, agentB } = req.body;
@@ -221,6 +260,42 @@ app.post('/api/mediator', async (req, res) => {
                        _customPrompt: prompt });
     } else {
       sseError(res, 'Kein Mediator-API-Key konfiguriert');
+    }
+  } catch (err) {
+    sseError(res, err.message);
+  }
+
+  sseDone(res);
+  res.end();
+});
+
+// ─── REST: Mediator Watch Zones (SSE streaming) — when agents disagree ────────
+app.post('/api/mediator-watchzones', async (req, res) => {
+  const { symbol, agentA, agentB } = req.body;
+  if (!symbol || !agentA || !agentB) {
+    return res.status(400).json({ error: 'Fehlende Parameter' });
+  }
+
+  res.setHeader('Content-Type',  'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection',    'keep-alive');
+  res.flushHeaders();
+
+  const prompt  = buildMediatorWatchZonePrompt(symbol, agentA, agentB);
+  const apiKeys = {
+    anthropic: process.env.ANTHROPIC_API_KEY,
+    openai:    process.env.OPENAI_API_KEY,
+  };
+
+  try {
+    if (apiKeys.anthropic && !apiKeys.anthropic.startsWith('your_')) {
+      await streamAI({ provider: 'anthropic', symbol, candles: [], analysis: {}, trade: {}, capital: 0, apiKeys, res,
+                       _customPrompt: prompt });
+    } else if (apiKeys.openai && !apiKeys.openai.startsWith('your_')) {
+      await streamAI({ provider: 'openai', symbol, candles: [], analysis: {}, trade: {}, capital: 0, apiKeys, res,
+                       _customPrompt: prompt });
+    } else {
+      sseError(res, 'Kein API-Key konfiguriert');
     }
   } catch (err) {
     sseError(res, err.message);

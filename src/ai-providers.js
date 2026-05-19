@@ -290,21 +290,24 @@ function buildCandleTable(candles) {
 }
 
 function buildClaudeVisionPrompt(symbol, capital, currentPrice, candles) {
-  const meta      = getInstrumentMeta(symbol);
-  const last200   = candles ? candles.slice(-200) : [];
+  const meta     = getInstrumentMeta(symbol);
+  const last200  = candles ? candles.slice(-200) : [];
   const candlesTxt = last200.length > 0
-    ? `\n═══ MARKTDATEN — letzte ${last200.length} M1-Kerzen (für präzise Berechnung) ═══\n` +
+    ? `\n═══ MARKTDATEN — letzte ${last200.length} M1-Kerzen ═══\n` +
       `Zeit   Open        High        Low         Close\n` +
       buildCandleTable(last200)
     : '';
 
   return `Du bist ein ICT-Trading-Assistent für ${symbol} auf dem M1-Chart.
-Ausgabe: komplett auf Deutsch. RR zwischen 1:1,8 und 1:4.
+Ausgabe: komplett auf Deutsch. RR-Ziel: zwischen 1:1,8 und 1:4.
 
-Du erhältst ZWEI Informationsquellen:
-1. Den Chart-Screenshot → für visuelle Mustererkennung (Struktur, FVGs, Liquidität)
-2. Die exakten OHLCV-Kerzendaten → für präzise numerische Berechnungen (SL, TP, Lot)
-Nutze beide kombiniert. Der Screenshot zeigt was, die Zahlen bestätigen und präzisieren.
+WICHTIG: Du bist kein Signalgeber, der immer einen Trade finden muss.
+Deine Hauptaufgabe ist es, schlechte, späte oder unsaubere Trades auszufiltern.
+No Trade ist ein vollkommen gültiges Ergebnis.
+
+Analysiere ausschließlich den sichtbaren Screenshot und die bereitgestellten Kerzendaten.
+Erfinde keine unsichtbaren HTF-Daten. Erfinde keine News. Erfinde keine Sessions.
+Nutze nur was im Screenshot und in den Kerzendaten sichtbar ist.
 
 ═══ INSTRUMENT-PARAMETER ═══
 Symbol:          ${symbol}
@@ -314,52 +317,115 @@ Lot-Formel:      ${meta.lotFormula}
 Handelskapital:  ${capital} $
 Aktueller Preis: ${currentPrice}
 ${candlesTxt}
-═══ ANALYSE (4 ICT-Säulen) ═══
-① Struktur — Identifiziere HH/HL (bullisch) oder LH/LL (bärisch) anhand der Swing-Punkte in den Kerzendaten
-② Liquidität — Finde BSL (Swing-Highs) und SSL (Swing-Lows); prüfe ob gesweept (Kerze hat darüber/darunter geclosed)
-③ FVG — Suche 3-Kerzen-Muster: Bullisch wenn C[i-2].high < C[i].low; Bärisch wenn C[i-2].low > C[i].high; nur nicht-mitigierte zählen
-④ Premium / Discount — EQ = (letzter Swing-High + letzter Swing-Low) / 2; aktueller Preis darüber = Premium, darunter = Discount
 
-═══ BERECHNUNG (mit den exakten Kerzenwerten rechnen) ═══
-- Entry   = ${currentPrice} (aktueller Preis)
-- SL      = hinter dem letzten relevanten Swing-Punkt + Puffer (exakten Low/High aus den Daten nehmen)
-- TP      = nächste Liquidität auf der Zielseite die RR 1:1,8–1:4 ergibt
-- Lot     = ${meta.lotFormula}, gerundet auf 0,01
+═══ ANALYSE (4 ICT-Säulen) ═══
+① Struktur — HH/HL (bullisch) oder LH/LL (bärisch) · letzter Strukturbruch (MSS/CHOCH) sichtbar?
+② Liquidität — BSL (Swing-Highs) · SSL (Swing-Lows) · bereits gesweept oder noch offen?
+③ FVG — Bullisch: C[i-2].high < C[i].low · Bärisch: C[i-2].low > C[i].high · mitigiert oder offen?
+④ Premium/Discount — EQ = (sichtbares High + Low) / 2 · Preis in Premium, Discount oder Mitte?
+
+═══ SETUP-SCORE (0–16 Punkte) ═══
+Bewerte jedes Kriterium mit 0–2 Punkten:
+- Struktur klar:             0–2
+- Liquidität sichtbar:       0–2
+- Sweep vorhanden:           0–2
+- MSS/CHOCH bestätigt:       0–2
+- Displacement sauber:       0–2
+- FVG/Retest-Zone vorhanden: 0–2
+- Premium/Discount passend:  0–2
+- RR + SL logisch:           0–2
+
+→ Ab 12/16 Punkten: TRADE.
+→ Unter 12 Punkten: NO_TRADE mit Watch-Zones.
+
+═══ ENTSCHEIDUNGSLOGIK ═══
+Prüfe vor jedem Trade alle 9 Bedingungen:
+1. Gibt es einen sichtbaren Liquiditäts-Sweep?
+2. Gibt es danach einen klaren MSS/CHOCH?
+3. Gibt es ein sauberes Displacement?
+4. Gibt es einen nicht mitigierten FVG oder eine klare Retest-Zone?
+5. Liegt der Entry logisch in Premium oder Discount?
+6. Ist der SL hinter einem echten strukturellen Punkt?
+7. Liegt der TP an sichtbarer Gegen-Liquidität?
+8. Ist das RR zwischen 1:1,8 und 1:4?
+9. Ist der Trade nicht zu spät (kein bereits gelaufener Move)?
+
+Mindestens 7 von 9 UND Score ≥ 12/16 → TRADE. Sonst → NO_TRADE.
+
+═══ BERECHNUNG (nur wenn TRADE) ═══
+- Entry: aktueller Preis ODER sinnvolle sichtbare Entry-Zone — NICHT mitten im Move
+- SL: hinter letztem strukturellen Punkt + kleiner Puffer — nicht willkürlich
+- TP: erste sichtbare Gegen-Liquidität mit RR zwischen 1,8 und 4,0
+- Lot = ${meta.lotFormula} (auf 0,01 runden)
 - tpPnl   = Lot × |TP − Entry| × ${meta.contractSize}
 - slPnl   = Lot × |Entry − SL| × ${meta.contractSize}
-- riskPct   = (slPnl / ${capital}) × 100
+- riskPct   = (|slPnl| / ${capital}) × 100
 - rewardPct = (tpPnl / ${capital}) × 100
-- RR      = |TP − Entry| / |Entry − SL|
 
 ═══ AUSGABE ═══
-Antworte AUSSCHLIESSLICH mit diesem JSON — kein Text davor oder danach, kein Markdown:
+Antworte AUSSCHLIESSLICH mit einem JSON-Objekt — kein Text, kein Markdown.
 
+Wenn TRADE (Score ≥ 12):
 {
-  "structure": { "label": "Bullisch · HH+HL bestätigt", "trend": "bullish" },
-  "liquidity": { "label": "BSL bei X.XX gesweept ✓\\nSSL bei Y.YY noch offen" },
-  "fvg":       { "label": "↑ Bullisch FVG · X.XX–Y.YY\\nNicht mitigiert", "type": "bullish" },
-  "premDisc":  { "label": "Discount · EQ bei X.XX", "zone": "discount" },
+  "decision": "TRADE",
+  "setup_score": 13,
+  "structure": { "label": "...", "trend": "bullish" },
+  "liquidity": { "label": "..." },
+  "fvg":       { "label": "...", "type": "bullish" },
+  "premDisc":  { "label": "...", "zone": "discount", "eq": 0.0 },
   "trade": {
     "direction":  "long",
-    "entry":      0.00,
-    "sl":         0.00,
-    "tp":         0.00,
-    "rr":         0.00,
-    "lot":        0.00,
-    "tpPnl":      0.00,
-    "slPnl":      0.00,
-    "riskPct":    10.00,
-    "rewardPct":  0.00
+    "entry":      0.0,
+    "sl":         0.0,
+    "tp":         0.0,
+    "rr":         0.0,
+    "lot":        0.0,
+    "tpPnl":      0.0,
+    "slPnl":      0.0,
+    "riskPct":    0.0,
+    "rewardPct":  0.0
+  }
+}
+
+Wenn NO_TRADE (Score < 12):
+{
+  "decision": "NO_TRADE",
+  "setup_score": 7,
+  "structure": { "label": "...", "trend": "neutral" },
+  "liquidity": { "label": "..." },
+  "fvg":       { "label": "...", "type": "none" },
+  "premDisc":  { "label": "...", "zone": "discount", "eq": 0.0 },
+  "no_trade": {
+    "reason": "Kurze Erklärung warum kein Trade",
+    "watch_zones": [
+      {
+        "type": "long",
+        "price_range": "0.0–0.0",
+        "why": "Warum diese Zone interessant ist",
+        "conditions": "Was passieren muss für einen gültigen Entry",
+        "valid_if": "Gültigkeitsbedingung",
+        "invalid_if": "Invalidierung"
+      },
+      {
+        "type": "short",
+        "price_range": "0.0–0.0",
+        "why": "Warum diese Zone interessant ist",
+        "conditions": "Was passieren muss für einen gültigen Entry",
+        "valid_if": "Gültigkeitsbedingung",
+        "invalid_if": "Invalidierung"
+      }
+    ]
   }
 }
 
 Regeln:
-- direction: "long" oder "short"
+- decision: "TRADE" oder "NO_TRADE"
+- direction (wenn TRADE): "long" oder "short"
 - trend: "bullish" / "bearish" / "neutral"
 - type (FVG): "bullish" / "bearish" / "none"
 - zone: "premium" / "discount"
-- Alle Preisangaben aus den echten Kerzendaten — keine Schätzungen
-- SL und TP müssen reale Levels aus den Swing-Daten sein`;
+- Alle Preisangaben aus sichtbaren Chart-Levels
+- watch_zones: genau 2 Zonen (eine long, eine short) nur aus sichtbaren Chart-Bereichen`;
 }
 
 async function callClaudeVision({ image, symbol, capital, currentPrice, candles, apiKey }) {
@@ -402,7 +468,41 @@ async function callClaudeVision({ image, symbol, capital, currentPrice, candles,
   return json;
 }
 
-module.exports = { streamAI, callClaudeVision, streamAnthropicRaw, sseToken, sseDone, sseError };
+async function callOpenAIAnalysis({ image, symbol, capital, currentPrice, candles, apiKey }) {
+  const prompt = buildClaudeVisionPrompt(symbol, capital, currentPrice, candles);
+
+  const userContent = image
+    ? [
+        { type: 'text',      text: prompt },
+        { type: 'image_url', image_url: { url: `data:image/png;base64,${image}`, detail: 'high' } },
+      ]
+    : prompt;
+
+  const response = await axios.post(
+    'https://api.openai.com/v1/chat/completions',
+    {
+      model:           'gpt-4o',
+      max_tokens:      1500,
+      response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: 'Du bist ein ICT-Trading-Analyst. Antworte ausschließlich mit gültigem JSON.' },
+        { role: 'user',   content: userContent },
+      ],
+    },
+    {
+      headers: {
+        'Authorization': `Bearer ${apiKey}`,
+        'content-type':  'application/json',
+      },
+      timeout: 60000,
+    }
+  );
+
+  const text = response.data.choices[0].message.content.trim();
+  return JSON.parse(text);
+}
+
+module.exports = { streamAI, callClaudeVision, callOpenAIAnalysis, streamAnthropicRaw, sseToken, sseDone, sseError };
 
 // ── Raw streaming helpers (re-exported for mediator) ─────────────────────────
 

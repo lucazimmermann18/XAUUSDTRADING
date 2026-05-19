@@ -74,11 +74,57 @@ Beide Agenten sind sich einig. Liefere das finale Urteil in diesem Format:
 
 **Urteil:** [2–3 Sätze auf Deutsch — warum dieser Trade jetzt Sinn macht]
 
-**Entry-Fenster:** [Wann genau einsteigen — z. B. "Sofort bei Market Order" oder "Warte auf FVG-Retest bei X"]
+**Entry-Fenster:** [Wann genau einsteigen]
 
 **Risiken:** ① [Risiko 1] ② [Risiko 2] ③ [Risiko 3]
 
 **Konfidenz:** [Zahl zwischen 0 und 100]/100
+
+Direkt und präzise. Nur Deutsch. Keine Einleitungen.`;
+}
+
+function buildMediatorWatchZonePrompt(symbol, agentA, agentB) {
+  const fmtDecision = (a, name) => {
+    if (a.decision === 'NO_TRADE') {
+      const zones = (a.no_trade?.watch_zones || []).map((z, i) =>
+        `  Zone ${i + 1} (${(z.type || '').toUpperCase()}): ${z.price_range}\n  Warum: ${z.why}\n  Bedingungen: ${z.conditions}`
+      ).join('\n');
+      return `${name}: NO_TRADE (Score: ${a.setup_score || '?'}/16)\nGrund: ${a.no_trade?.reason || '–'}\nWatch-Zones:\n${zones || '  –'}`;
+    }
+    return `${name}: TRADE ${(a.trade?.direction || '').toUpperCase()} (Score: ${a.setup_score || '?'}/16)\nEntry: ${a.trade?.entry} | SL: ${a.trade?.sl} | TP: ${a.trade?.tp}`;
+  };
+
+  return `Zwei unabhängige KI-Analysten haben ${symbol} auf dem M1-Chart analysiert.
+Ihre Ergebnisse stimmen nicht überein — kein Trade wird genommen.
+
+═══ ANALYSE A (Claude) ═══
+${fmtDecision(agentA, 'Claude')}
+
+═══ ANALYSE B (GPT-4o) ═══
+${fmtDecision(agentB, 'GPT-4o')}
+
+═══ DEINE AUFGABE (Vermittler) ═══
+Synthetisiere die Ergebnisse. Identifiziere die sinnvollsten Watch-Zones.
+Antworte in diesem Format (auf Deutsch):
+
+**Status:** Kein Trade — warte auf bessere Zone
+
+**Warum kein Trade jetzt:**
+[1–2 Sätze]
+
+**Watch-Zone 1 (Long):**
+📍 Preiszone: [Bereich]
+Bedingungen: [Was muss passieren]
+Gültig wenn: [Bedingung]
+Ungültig wenn: [Invalidierung]
+
+**Watch-Zone 2 (Short):**
+📍 Preiszone: [Bereich]
+Bedingungen: [Was muss passieren]
+Gültig wenn: [Bedingung]
+Ungültig wenn: [Invalidierung]
+
+**Nächste Aktion:** Warte bis der Preis eine der genannten Zonen erreicht. Dann neuer Screenshot.
 
 Direkt und präzise. Nur Deutsch. Keine Einleitungen.`;
 }
@@ -201,4 +247,4 @@ async function dualValidate({ symbol, analysis, trade, apiKeys, primaryVerdict }
   return { agentA, agentB, agreement, direction: agreement ? agentA.direction : null, rejectionReason };
 }
 
-module.exports = { dualValidate, buildMediatorPrompt };
+module.exports = { dualValidate, buildMediatorPrompt, buildMediatorWatchZonePrompt };
