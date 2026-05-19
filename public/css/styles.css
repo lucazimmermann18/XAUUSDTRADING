@@ -1133,3 +1133,123 @@ body {
 /* ── Utility ─────────────────────────────────────────────────────────────── */
 .hidden  { display: none !important; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); }
+
+/* ── TradeMonitor Auto-Close Notification ──────────────────────────────────── */
+.tm-notif {
+  position: fixed;
+  bottom: calc(28px + var(--notif-offset, 0px));
+  left: 28px;
+  z-index: 9998;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 16px 18px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  max-width: 380px;
+  min-width: 300px;
+  opacity: 0;
+  transform: translateX(-24px);
+  transition: opacity 0.35s ease, transform 0.35s ease;
+  pointer-events: none;
+}
+
+.tm-notif.visible {
+  opacity: 1;
+  transform: translateX(0);
+  pointer-events: auto;
+}
+
+.tm-notif.win  { border-left: 3px solid var(--bull); }
+.tm-notif.loss { border-left: 3px solid var(--bear); }
+
+.tm-notif__icon {
+  font-size: 26px;
+  flex-shrink: 0;
+  line-height: 1;
+  margin-top: 1px;
+}
+
+.tm-notif__body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tm-notif__title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+}
+
+.tm-notif__symbol {
+  font-size: 15px;
+  font-weight: 800;
+}
+
+.tm-notif__dir {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+.tm-notif__verdict {
+  font-size: 12px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+
+.tm-notif__verdict.win  { background: var(--bull-dim); color: var(--bull); }
+.tm-notif__verdict.loss { background: var(--bear-dim); color: var(--bear); }
+
+.tm-notif__prices {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-family: var(--font-mono);
+}
+
+.tm-notif__pnl {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+
+.tm-notif__pnl.win  { color: var(--bull); }
+.tm-notif__pnl.loss { color: var(--bear); }
+
+.tm-notif__actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.tm-notif__link {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.tm-notif__link:hover { text-decoration: underline; }
+
+.tm-notif__close {
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 2px 4px;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.tm-notif__close:hover { color: var(--text-primary); }

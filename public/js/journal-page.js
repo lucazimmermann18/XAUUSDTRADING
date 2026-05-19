@@ -427,6 +427,15 @@
     bindClearBtn();
     bindModalClose();
     refresh();
+
+    // Auto-refresh when trades are auto-closed by TradeMonitor (cross-tab storage event)
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'ict_sniper_journal_v1') {
+        equityChart = null; // force chart rebuild
+        equitySeries = null;
+        refresh();
+      }
+    });
   });
 
 })();

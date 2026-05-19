@@ -165,6 +165,8 @@
 
     // Switch WS subscription
     WSClient.switchSymbol(symbol, prevSymbol);
+    // Restore TradeMonitor subscriptions after switchSymbol may have removed them
+    TradeMonitor.resubscribeAll();
 
     // Load new candles
     loadSymbol(symbol);
@@ -216,9 +218,10 @@
       const cardHTML = TradeCard.render(result);
       cardOutput.innerHTML = cardHTML;
 
-      // Auto-save to journal
+      // Auto-save to journal + start price monitoring
       const tradeId = JournalStore.add(result);
       showJournalToast(tradeId);
+      TradeMonitor.onNewTrade(result.symbol);
 
       // Inject AI commentary panel below trade card
       aiPanelContainer.innerHTML = AICommentator.renderPanel();
@@ -285,6 +288,7 @@
 
   await loadSymbol(currentSymbol);
   WSClient.subscribe(currentSymbol);
+  TradeMonitor.init();
 
   console.log('[App] ICT Sniper ready ✓ — 17 Märkte aktiv');
 
