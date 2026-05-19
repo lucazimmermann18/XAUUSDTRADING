@@ -166,17 +166,22 @@ async function safeCall(fn, label) {
 
 // ── Main: parallel dual validation ───────────────────────────────────────────
 
-async function dualValidate({ symbol, analysis, trade, apiKeys }) {
+async function dualValidate({ symbol, analysis, trade, apiKeys, primaryVerdict }) {
   const prompt = buildValidatorPrompt(symbol, analysis, trade);
 
   const missingA = !apiKeys.anthropic || apiKeys.anthropic.startsWith('your_');
   const missingB = !apiKeys.openai    || apiKeys.openai.startsWith('your_');
 
-  const [agentA, agentB] = await Promise.all([
-    missingA
+  // If primary Claude verdict is provided (e.g. from Claude Vision analysis),
+  // reuse it directly instead of calling Claude again.
+  const agentAPromise = primaryVerdict
+    ? Promise.resolve({ ok: true, label: 'Claude', ...primaryVerdict })
+    : missingA
       ? Promise.resolve(noTradeResult('Claude', 'Anthropic API-Key nicht konfiguriert'))
-      : safeCall(() => callClaude(prompt, apiKeys.anthropic), 'Claude'),
+      : safeCall(() => callClaude(prompt, apiKeys.anthropic), 'Claude');
 
+  const [agentA, agentB] = await Promise.all([
+    agentAPromise,
     missingB
       ? Promise.resolve(noTradeResult('OpenAI', 'OpenAI API-Key nicht konfiguriert'))
       : safeCall(() => callOpenAI(prompt, apiKeys.openai), 'OpenAI'),

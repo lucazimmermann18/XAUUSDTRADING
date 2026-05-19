@@ -225,6 +225,21 @@ const DualValidatorUI = (() => {
       capital,
     };
 
+    // When Claude Vision ran as primary analyst, reuse its verdict instead of
+    // calling Claude again in the dual-validate endpoint (avoids 529 rate limits).
+    if (result.source === 'claude-vision' && result.trade) {
+      payload.primaryVerdict = {
+        direction:    (result.trade.direction || 'NO_TRADE').toUpperCase(),
+        confidence:   'HIGH',
+        reasons: [
+          result.structure?.label,
+          result.liquidity?.label,
+          result.fvg?.label,
+        ].filter(Boolean).slice(0, 3),
+        risk_warning: result.premDisc?.label || '',
+      };
+    }
+
     let gateResult;
 
     try {

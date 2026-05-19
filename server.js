@@ -78,7 +78,7 @@ app.post('/api/claude-analyze', async (req, res) => {
 
 // ─── REST: Dual-KI Quality Gate ──────────────────────────────────────────────
 app.post('/api/dual-validate', async (req, res) => {
-  const { symbol, analysis, trade, capital } = req.body;
+  const { symbol, analysis, trade, capital, primaryVerdict } = req.body;
   if (!symbol || !analysis || !trade) {
     return res.status(400).json({ error: 'Fehlende Parameter' });
   }
@@ -89,7 +89,7 @@ app.post('/api/dual-validate', async (req, res) => {
   };
 
   try {
-    const result = await dualValidate({ symbol, analysis, trade, apiKeys });
+    const result = await dualValidate({ symbol, analysis, trade, apiKeys, primaryVerdict });
     res.json(result);
   } catch (err) {
     console.error('[/api/dual-validate]', err.message);
